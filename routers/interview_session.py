@@ -2,9 +2,9 @@ import os
 import json
 from datetime import datetime
 from fastapi import APIRouter, Request, Depends, HTTPException
-from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from database import get_db
 import models
 import anthropic
@@ -13,48 +13,77 @@ router = APIRouter()
 templates = Jinja2Templates(directory="templates")
 client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY", ""))
 
+# 正しいモデル名
+MODEL = "claude-sonnet-4-6"
+
 
 def build_system_prompt(job: models.Job, applicant: models.Applicant) -> str:
+    """新旧両方のJobフォーマットに対応したシステムプロンプト生成"""
+    lang = job.interview_language or "ja"
+
+    # 質問リスト（新形式: question_ja / 旧形式: question）
     questions_text = ""
     if job.ai_questions:
-        questions_text = "\n".join([
-            f"- [{q.get('category', '')}] {q.get('question', '')}"
-            for q in job.ai_questions
-        ])
+        lines = []
+        for i, q in enumerate(job.ai_questions, 1):
+            if lang == "en":
+                text = q.get("question_en") or q.get("question_ja") or q.get("question", "")
+            elif lang == "vi":
+                text = q.get("question_vi") or q.get("question_ja") or q.get("question", "")
+            else:
+                text = q.get("question_ja") or q.get("question", "")
+            if text:
+                lines.append(f"{i}. {text}")
+        questions_text = "\n".join(lines)
 
+    # 評価基準（新形式: grade_criteria＋ai_evaluation_prompt / 旧形式: ai_evaluation_criteria）
     criteria_text = ""
-    if job.ai_evaluation_criteria:
+    if job.ai_evaluation_prompt:
+        criteria_text = job.ai_evaluation_prompt
+    elif job.ai_evaluation_criteria:
         criteria_text = "\n".join([
-            f"- {c.get('name', '')}: {c.get('weight', 0)}%"
+            f"- {c.get('name','')}: {c.get('weight',0)}%"
             for c in job.ai_evaluation_criteria
         ])
 
-    return f"""{job.ai_persona or ''}
+    # キーワード
+    keywords_text = ""
+    if job.keywords:
+        keywords_text = "評価時に加点するキーワード: " + "、".join(job.keywords)
+
+    # ペルソナ（新形式: ai_role / 旧形式: ai_persona）
+    if job.ai_role and job.ai_role.strip():
+        persona = f"あなたは{job.ai_role}です。"
+    elif job.ai_persona:
+        persona = job.ai_persona
+    else:
+        persona = f"あなたは{job.company.name}のプロフェッショナルな採用面接官です。"
+
+    return f"""{persona}
 
 ## 採用情報
 - 企業名: {job.company.name}
 - 求人タイトル: {job.title}
-- 雇用形態: {job.employment_type or '未設定'}
-- 勤務地: {job.location or '未設定'}
 
 ## 応募者情報
 - 氏名: {applicant.name}
 - 学歴: {applicant.education or '未記載'}
 - 職務経歴: {applicant.work_experience or '未記載'}
 
-## 面接で聞くべき質問（必ずしもこの順番である必要はなく、会話の流れに合わせて調整してください）
-{questions_text}
+## 面接質問リスト（この順番で必ず聞いてください。一度に一問ずつ）
+{questions_text or '自由に適切な質問を行ってください。'}
 
-## 評価基準
+## 評価方針
 {criteria_text}
+{keywords_text}
 
-## 重要なルール
-1. 質問は一度に必ず一つだけ行ってください
-2. 応募者の回答に対して共感・承認を示してから次の質問に進んでください
-3. 面接は丁寧で温かみのある雰囲気を保ってください
-4. すべての質問が終わったら、面接終了の旨を伝え「[INTERVIEW_COMPLETE]」というタグを文末に付けてください
-5. 回答が不明瞭な場合は適切にフォローアップ質問をしてください
-6. 面接時間: 約{job.ai_interview_duration}分を目安にしてください
+## 厳守ルール
+1. 質問は必ず一度に一つだけ行う
+2. 応募者の回答に共感・承認を示してから次の質問へ進む
+3. 丁寧で温かみのある雰囲気を保つ
+4. すべての質問が完了したら「本日は面接にご参加いただきありがとうございました。以上で面接を終了いたします。[INTERVIEW_COMPLETE]」と伝える
+5. 回答が短い・不明瞭な場合は一度だけフォローアップ質問をする
+6. 日本語で面接を行う（interview_language: {lang}）
 """
 
 
@@ -62,15 +91,16 @@ def build_evaluation_prompt(job: models.Job, messages: list) -> str:
     conversation = "\n".join([
         f"{'面接官' if m.role == 'assistant' else '応募者'}: {m.content}"
         for m in messages
-        if not m.content.startswith("[SYSTEM]")
     ])
 
     criteria_text = ""
     if job.ai_evaluation_criteria:
         criteria_text = "\n".join([
-            f"- {c.get('name', '')}: {c.get('weight', 0)}%"
+            f"- {c.get('name','')}: {c.get('weight',0)}%"
             for c in job.ai_evaluation_criteria
         ])
+    elif job.grade_criteria:
+        criteria_text = "S(100点〜)/A(80点〜)/B(60点〜)/C(40点〜)/D(0点〜)"
 
     return f"""以下の面接の会話記録を分析し、応募者を評価してください。
 
@@ -78,57 +108,44 @@ def build_evaluation_prompt(job: models.Job, messages: list) -> str:
 - タイトル: {job.title}
 - 企業: {job.company.name}
 
-## 評価基準（合計100%）
-{criteria_text}
+## 評価基準
+{criteria_text or '総合的に評価してください'}
+
+## 加点キーワード
+{', '.join(job.keywords or [])}
 
 ## 面接会話記録
 {conversation}
 
-## 出力形式（必ずJSONのみで回答してください）
-{{
-  "total_score": 75,
-  "recommendation": "pass",
-  "summary": "総合評価のサマリー（200字程度）",
-  "details": [
-    {{"criterion": "評価基準名", "score": 80, "comment": "コメント", "weight": 20}},
-    ...
-  ],
-  "strengths": ["強み1", "強み2"],
-  "concerns": ["懸念点1", "懸念点2"],
-  "interview_quality": "面接の質・応答の充実度についてのコメント"
-}}
+## 出力形式（JSONのみ・マークダウン不要）
+{{"total_score":75,"recommendation":"pass","summary":"総合評価200字程度","details":[{{"criterion":"評価項目","score":80,"comment":"コメント","weight":20}}],"strengths":["強み1"],"concerns":["懸念1"]}}
 
-recommendation は "pass"(採用推薦), "review"(再検討), "fail"(不採用推薦) のいずれか。
-total_score は 0-100 の数値。
-必ずJSON形式のみで回答し、マークダウンの```は使用しないでください。"""
+recommendationは "pass"/"review"/"fail" のいずれか。total_scoreは0-100。JSONのみで回答。"""
 
 
 # ── Interview Pages ──────────────────────────────────────────────────────────
 
 @router.get("/interview/{token}", response_class=HTMLResponse)
-async def interview_start(
-    token: str, request: Request, db: Session = Depends(get_db)
-):
-    interview = db.query(models.Interview).filter(models.Interview.token == token).first()
-    if not interview:
-        return HTMLResponse("<h1>無効なリンクです</h1>", status_code=404)
-    if interview.status == "completed":
-        return templates.TemplateResponse("interview/completed.html", {
-            "request": request, "interview": interview
-        })
-    if interview.status == "expired":
-        return HTMLResponse("<h1>このリンクは有効期限が切れています</h1>", status_code=410)
+async def interview_start(token: str, request: Request, db: Session = Depends(get_db)):
+    interview = db.query(models.Interview).options(
+        joinedload(models.Interview.applicant).joinedload(models.Applicant.company),
+        joinedload(models.Interview.job).joinedload(models.Job.company),
+    ).filter(models.Interview.token == token).first()
 
-    # Get privacy policy
+    if not interview:
+        return HTMLResponse("<h1 style='font-family:sans-serif;padding:40px'>無効なリンクです</h1>", status_code=404)
+    if interview.status == "completed":
+        return templates.TemplateResponse("interview/completed.html", {"request": request, "interview": interview})
+    if interview.status == "expired":
+        return HTMLResponse("<h1 style='font-family:sans-serif;padding:40px'>このリンクは有効期限が切れています</h1>", status_code=410)
+
     policy = db.query(models.PrivacyPolicy).filter(
         models.PrivacyPolicy.company_id == interview.applicant.company_id,
         models.PrivacyPolicy.is_active == True,
+    ).first() or db.query(models.PrivacyPolicy).filter(
+        models.PrivacyPolicy.company_id == None,
+        models.PrivacyPolicy.is_active == True,
     ).first()
-    if not policy:
-        policy = db.query(models.PrivacyPolicy).filter(
-            models.PrivacyPolicy.company_id == None,
-            models.PrivacyPolicy.is_active == True,
-        ).first()
 
     return templates.TemplateResponse("interview/start.html", {
         "request": request,
@@ -151,18 +168,21 @@ async def start_interview(token: str, db: Session = Depends(get_db)):
     interview.started_at = datetime.utcnow()
     db.commit()
 
-    # Generate initial greeting
     job = interview.job
-    greeting = (job.ai_greeting or "面接を開始します。よろしくお願いします。").replace(
-        "{duration}", str(job.ai_interview_duration)
-    ).replace("{name}", interview.applicant.name)
+    lang = job.interview_language or "ja"
 
-    # Add greeting as first assistant message
+    # 言語別の挨拶
+    if lang == "en":
+        greeting = f"Thank you for joining the interview for {job.company.name}. I'm your AI interviewer today. We have about {job.ai_interview_duration} minutes. Please feel free to speak naturally. When you're ready, please say 'I'm ready'."
+    elif lang == "vi":
+        greeting = f"Cảm ơn bạn đã tham gia phỏng vấn tại {job.company.name}. Tôi là người phỏng vấn AI hôm nay. Khi bạn sẵn sàng, hãy nói 'Tôi đã sẵn sàng'."
+    else:
+        greeting = (job.ai_greeting or "本日はご応募いただきありがとうございます。これよりAI面接を開始いたします。約{duration}分程度を予定しております。準備ができましたら「はい、準備できました」とお答えください。").replace("{duration}", str(job.ai_interview_duration or 30)).replace("{name}", interview.applicant.name)
+
     if not interview.messages:
-        msg = models.InterviewMessage(
+        db.add(models.InterviewMessage(
             interview_id=interview.id, role="assistant", content=greeting
-        )
-        db.add(msg)
+        ))
         db.commit()
 
     return JSONResponse({"status": "started", "greeting": greeting})
@@ -170,7 +190,12 @@ async def start_interview(token: str, db: Session = Depends(get_db)):
 
 @router.post("/interview/{token}/message")
 async def send_message(token: str, request: Request, db: Session = Depends(get_db)):
-    interview = db.query(models.Interview).filter(models.Interview.token == token).first()
+    interview = db.query(models.Interview).options(
+        joinedload(models.Interview.applicant),
+        joinedload(models.Interview.job).joinedload(models.Job.company),
+        joinedload(models.Interview.messages),
+    ).filter(models.Interview.token == token).first()
+
     if not interview or interview.status != "in_progress":
         raise HTTPException(400, "面接が開始されていません")
 
@@ -179,47 +204,48 @@ async def send_message(token: str, request: Request, db: Session = Depends(get_d
     if not user_message:
         raise HTTPException(400, "メッセージが空です")
 
-    # Save user message
     db.add(models.InterviewMessage(
         interview_id=interview.id, role="user", content=user_message
     ))
     db.commit()
+    db.refresh(interview)
 
-    # Build message history for Claude
     job = interview.job
     system_prompt = build_system_prompt(job, interview.applicant)
 
-    history = []
-    for m in interview.messages:
-        history.append({"role": m.role, "content": m.content})
+    history = [{"role": m.role if m.role != "ai" else "assistant", "content": m.content}
+               for m in interview.messages]
 
-    # Check turn limit
+    # ターン数チェック
     user_turns = sum(1 for m in interview.messages if m.role == "user")
-    if user_turns >= job.ai_max_turns:
-        closing = f"ご回答いただきありがとうございました。これで面接を終了いたします。{interview.applicant.name}様のご活躍をお祈りしております。[INTERVIEW_COMPLETE]"
-        db.add(models.InterviewMessage(
-            interview_id=interview.id, role="assistant", content=closing
-        ))
+    total_questions = len(job.ai_questions) if job.ai_questions else (job.ai_max_turns or 10)
+
+    if user_turns >= total_questions + 2:
+        closing = "本日は面接にご参加いただきありがとうございました。以上で面接を終了いたします。[INTERVIEW_COMPLETE]"
+        db.add(models.InterviewMessage(interview_id=interview.id, role="assistant", content=closing))
         await _complete_interview(interview, db)
         return JSONResponse({"reply": closing, "completed": True})
 
-    # Call Claude API
+    # Claude API呼び出し
     try:
         response = client.messages.create(
-            model="claude-opus-4-5",
+            model=MODEL,
             max_tokens=1000,
             system=system_prompt,
             messages=history,
         )
         reply = response.content[0].text
+    except anthropic.APIConnectionError as e:
+        print(f"[ERROR] Connection error: {e}")
+        raise HTTPException(503, "AIサービスに接続できません")
+    except anthropic.AuthenticationError as e:
+        print(f"[ERROR] Auth error: {e}")
+        raise HTTPException(500, "APIキーが無効です")
     except Exception as e:
-        reply = "申し訳ございません。システムエラーが発生しました。少し待ってから再度お試しください。"
-        print(f"Claude API error: {e}")
+        print(f"[ERROR] Claude API error: {type(e).__name__}: {e}")
+        raise HTTPException(500, f"AI処理エラー: {type(e).__name__}")
 
-    # Save assistant message
-    db.add(models.InterviewMessage(
-        interview_id=interview.id, role="assistant", content=reply
-    ))
+    db.add(models.InterviewMessage(interview_id=interview.id, role="assistant", content=reply))
     db.commit()
 
     completed = "[INTERVIEW_COMPLETE]" in reply
@@ -233,18 +259,17 @@ async def _complete_interview(interview: models.Interview, db: Session):
     interview.status = "completed"
     interview.completed_at = datetime.utcnow()
     db.commit()
+    db.refresh(interview)
 
-    # Run AI evaluation
     try:
         eval_prompt = build_evaluation_prompt(interview.job, interview.messages)
         eval_response = client.messages.create(
-            model="claude-opus-4-5",
+            model=MODEL,
             max_tokens=2000,
             messages=[{"role": "user", "content": eval_prompt}],
         )
         eval_text = eval_response.content[0].text.strip()
-        # Clean JSON
-        if eval_text.startswith("```"):
+        if "```" in eval_text:
             eval_text = eval_text.split("```")[1]
             if eval_text.startswith("json"):
                 eval_text = eval_text[4:]
@@ -253,12 +278,10 @@ async def _complete_interview(interview: models.Interview, db: Session):
         interview.evaluation_summary = eval_data.get("summary", "")
         interview.evaluation_details = eval_data
         interview.ai_recommendation = eval_data.get("recommendation", "review")
-        # Update applicant status
-        if interview.ai_recommendation == "pass":
-            interview.applicant.status = "interviewed"
+        interview.applicant.status = "interviewed"
         db.commit()
     except Exception as e:
-        print(f"Evaluation error: {e}")
+        print(f"[ERROR] Evaluation error: {type(e).__name__}: {e}")
         interview.evaluation_summary = "評価処理中にエラーが発生しました"
         db.commit()
 
@@ -268,8 +291,8 @@ async def get_messages(token: str, db: Session = Depends(get_db)):
     interview = db.query(models.Interview).filter(models.Interview.token == token).first()
     if not interview:
         raise HTTPException(404)
-    messages = [
-        {"role": m.role, "content": m.content, "time": m.created_at.isoformat()}
-        for m in interview.messages
-    ]
-    return JSONResponse({"messages": messages, "status": interview.status})
+    return JSONResponse({
+        "messages": [{"role": m.role, "content": m.content} for m in interview.messages],
+        "status": interview.status,
+        "total_questions": len(interview.job.ai_questions) if interview.job.ai_questions else 10,
+    })
