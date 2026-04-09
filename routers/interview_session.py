@@ -213,8 +213,26 @@ async def send_message(token: str, request: Request, db: Session = Depends(get_d
     job = interview.job
     system_prompt = build_system_prompt(job, interview.applicant)
 
-    history = [{"role": m.role if m.role != "ai" else "assistant", "content": m.content}
-               for m in interview.messages]
+    # Anthropic API requires history to start with "user" and alternate roles.
+    # The initial greeting (first assistant message) goes in the system prompt,
+    # so we skip leading assistant messages and merge consecutive same-role messages.
+    raw = [{"role": m.role, "content": m.content} for m in interview.messages]
+
+    # Drop leading assistant messages (greeting is already in system prompt context)
+    while raw and raw[0]["role"] == "assistant":
+        raw.pop(0)
+
+    # Merge consecutive same-role messages (API requires strict alternation)
+    history = []
+    for msg in raw:
+        if history and history[-1]["role"] == msg["role"]:
+            history[-1]["content"] += "\n" + msg["content"]
+        else:
+            history.append({"role": msg["role"], "content": msg["content"]})
+
+    # Must start with user
+    if not history:
+        history = [{"role": "user", "content": user_message}]
 
     # ターン数チェック
     user_turns = sum(1 for m in interview.messages if m.role == "user")
