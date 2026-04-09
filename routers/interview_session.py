@@ -296,3 +296,21 @@ async def get_messages(token: str, db: Session = Depends(get_db)):
         "status": interview.status,
         "total_questions": len(interview.job.ai_questions) if interview.job.ai_questions else 10,
     })
+
+
+@router.get("/interview/{token}/debug")
+async def debug_interview(token: str, db: Session = Depends(get_db)):
+    """デバッグ用：面接状態確認"""
+    interview = db.query(models.Interview).filter(models.Interview.token == token).first()
+    if not interview:
+        return JSONResponse({"error": "token not found"})
+    return JSONResponse({
+        "interview_id": interview.id,
+        "status": interview.status,
+        "job_title": interview.job.title if interview.job else None,
+        "company": interview.job.company.name if interview.job and interview.job.company else None,
+        "questions_count": len(interview.job.ai_questions) if interview.job and interview.job.ai_questions else 0,
+        "messages_count": len(interview.messages),
+        "model": MODEL,
+        "api_key_set": bool(os.getenv("ANTHROPIC_API_KEY")),
+    })

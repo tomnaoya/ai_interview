@@ -7,26 +7,11 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-    :root{
-      --primary:#4f46e5;--primary-dark:#3730a3;
-      --success:#10b981;--danger:#ef4444;--warning:#f59e0b;
-    }
-    body{
-      font-family:'Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif;
-      background:#0d0d1a;min-height:100vh;display:flex;flex-direction:column;
-      align-items:center;color:#fff;overflow:hidden;
-    }
-    .bg{position:fixed;inset:0;z-index:0;
-      background:radial-gradient(ellipse at 15% 50%,rgba(79,70,229,.25) 0%,transparent 55%),
-                 radial-gradient(ellipse at 85% 20%,rgba(124,58,237,.18) 0%,transparent 50%),
-                 radial-gradient(ellipse at 50% 90%,rgba(16,185,129,.12) 0%,transparent 50%),#0d0d1a;}
-    .bg-grid{position:fixed;inset:0;z-index:0;
-      background-image:linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),
-                       linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);
-      background-size:48px 48px;}
+    :root{--primary:#4f46e5;--success:#10b981;--danger:#ef4444;--warning:#f59e0b;}
+    body{font-family:'Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif;background:#0d0d1a;min-height:100vh;display:flex;flex-direction:column;align-items:center;color:#fff;overflow:hidden;}
+    .bg{position:fixed;inset:0;z-index:0;background:radial-gradient(ellipse at 15% 50%,rgba(79,70,229,.25) 0%,transparent 55%),radial-gradient(ellipse at 85% 20%,rgba(124,58,237,.18) 0%,transparent 50%),#0d0d1a;}
+    .bg-grid{position:fixed;inset:0;z-index:0;background-image:linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);background-size:48px 48px;}
     .app{position:relative;z-index:1;width:100%;max-width:960px;min-height:100vh;display:flex;flex-direction:column;padding:0 16px;}
-
-    /* Header */
     .header{display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid rgba(255,255,255,.07);}
     .co-info{display:flex;align-items:center;gap:10px;}
     .co-logo{width:30px;height:30px;border-radius:6px;background:rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center;font-size:13px;color:rgba(255,255,255,.5);}
@@ -38,8 +23,7 @@
     .sdot.speaking{background:var(--primary);animation:dp .7s infinite;}
     .sdot.thinking{background:var(--warning);animation:dp .5s infinite;}
     @keyframes dp{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(1.4)}}
-
-    /* ── Consent ── */
+    /* Consent */
     #screenConsent{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 0;}
     .c-logo{width:76px;height:76px;border-radius:18px;background:linear-gradient(135deg,var(--primary),#7c3aed);display:flex;align-items:center;justify-content:center;font-size:34px;margin-bottom:18px;box-shadow:0 0 40px rgba(79,70,229,.35);}
     .c-title{font-size:23px;font-weight:700;margin-bottom:5px;}
@@ -54,48 +38,29 @@
     .btn-start{width:100%;padding:13px;border-radius:11px;background:linear-gradient(135deg,var(--primary),#7c3aed);color:#fff;border:none;font-size:15px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:9px;transition:opacity .2s,transform .15s;box-shadow:0 4px 20px rgba(79,70,229,.35);}
     .btn-start:disabled{opacity:.35;cursor:not-allowed;}
     .btn-start:not(:disabled):hover{opacity:.88;transform:translateY(-1px);}
-
-    /* ── Interview ── */
+    /* Interview */
     #screenInterview{flex:1;display:none;flex-direction:column;padding-bottom:16px;}
     #screenInterview.active{display:flex;}
     .iv-main{flex:1;display:flex;gap:20px;padding:20px 0;min-height:0;}
-
-    /* ── Avatar Panel ── */
-    .av-panel{width:280px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:14px;}
-
-    /* Avatar container */
-    .av-outer{position:relative;width:200px;height:200px;}
-    .av-ring{
-      position:absolute;inset:-6px;border-radius:50%;
-      border:2.5px solid rgba(79,70,229,0);
-      transition:border-color .4s;
-    }
+    /* Avatar */
+    .av-panel{width:260px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:14px;}
+    .av-outer{position:relative;width:190px;height:190px;}
+    .av-ring{position:absolute;inset:-6px;border-radius:50%;border:2.5px solid rgba(79,70,229,0);transition:border-color .4s;}
     .av-ring.active{border-color:rgba(79,70,229,.7);animation:ring-spin 4s linear infinite;}
     @keyframes ring-spin{to{transform:rotate(360deg)}}
-    /* pulse waves when speaking */
     .av-waves{position:absolute;inset:0;pointer-events:none;}
     .av-wave{position:absolute;inset:0;border-radius:50%;border:2px solid rgba(79,70,229,.3);opacity:0;}
     .speaking-anim .av-wave:nth-child(1){animation:wave 1.8s 0s infinite;}
     .speaking-anim .av-wave:nth-child(2){animation:wave 1.8s .5s infinite;}
     .speaking-anim .av-wave:nth-child(3){animation:wave 1.8s 1s infinite;}
     @keyframes wave{0%{transform:scale(1);opacity:.5}100%{transform:scale(1.5);opacity:0}}
-
-    /* ─ Human Avatar SVG area ─ */
-    .av-face{
-      width:200px;height:200px;border-radius:50%;overflow:hidden;
-      position:relative;
-      border:3px solid rgba(79,70,229,.3);
-      box-shadow:0 0 40px rgba(79,70,229,.2),inset 0 0 30px rgba(0,0,0,.3);
-      background:#1a1035;
-    }
+    .av-face{width:190px;height:190px;border-radius:50%;overflow:hidden;position:relative;border:3px solid rgba(79,70,229,.3);box-shadow:0 0 40px rgba(79,70,229,.2);background:#1a1035;}
     .av-face svg{width:100%;height:100%;}
-
     .av-name{font-size:14px;font-weight:600;color:rgba(255,255,255,.9);}
     .av-role{font-size:11px;color:rgba(255,255,255,.35);}
-    .voice-bar-sm{width:160px;height:5px;background:rgba(255,255,255,.08);border-radius:99px;overflow:hidden;}
+    .voice-bar-sm{width:150px;height:5px;background:rgba(255,255,255,.08);border-radius:99px;overflow:hidden;}
     .voice-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--success),#34d399);width:0%;transition:width .06s;}
-
-    /* ── Chat panel ── */
+    /* Chat */
     .chat-panel{flex:1;display:flex;flex-direction:column;gap:10px;min-height:0;}
     .msgs{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding-right:4px;}
     .msgs::-webkit-scrollbar{width:3px;}
@@ -112,14 +77,14 @@
     .mtext{padding:10px 14px;border-radius:14px;font-size:13px;line-height:1.75;}
     .msg-ai .mtext{background:rgba(79,70,229,.18);border:1px solid rgba(79,70,229,.25);border-top-left-radius:3px;}
     .msg-user .mtext{background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.07);border-top-right-radius:3px;}
+    .msg-error .mtext{background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);}
     .typing-msg .mtext{padding:12px 16px;}
     .tdots{display:flex;gap:4px;align-items:center;}
     .tdots span{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.4);animation:td .9s infinite;}
     .tdots span:nth-child(2){animation-delay:.2s;}
     .tdots span:nth-child(3){animation-delay:.4s;}
     @keyframes td{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-6px)}}
-
-    /* Voice input bar */
+    /* Voice bar */
     .vbar{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);border-radius:14px;padding:14px 18px;display:flex;align-items:center;gap:14px;backdrop-filter:blur(10px);}
     .mic-btn{width:48px;height:48px;border-radius:50%;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0;transition:all .2s;}
     .mic-btn.idle{background:rgba(255,255,255,.08);color:rgba(255,255,255,.4);}
@@ -133,7 +98,9 @@
     .waveform{display:flex;align-items:center;gap:2px;height:28px;}
     .wbar{width:3px;border-radius:2px;background:rgba(255,255,255,.15);height:4px;transition:height .06s;}
     .listening-wf .wbar{background:var(--success);}
-
+    /* Error box */
+    .err-box{background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);border-radius:10px;padding:12px 16px;font-size:12px;color:#fca5a5;margin-top:8px;display:none;}
+    .err-box.show{display:block;}
     /* Completed */
     #screenCompleted{flex:1;display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;}
     #screenCompleted.active{display:flex;}
@@ -144,17 +111,13 @@
   </style>
 </head>
 <body>
-<div class="bg"></div>
-<div class="bg-grid"></div>
+<div class="bg"></div><div class="bg-grid"></div>
 <div class="app">
 
   <!-- Header -->
   <div class="header">
     <div class="co-info">
-      <div class="co-logo">
-        {% if job.company.logo_path %}<img src="{{ job.company.logo_path }}" style="width:100%;height:100%;object-fit:contain;border-radius:6px">
-        {% else %}<i class="fas fa-building"></i>{% endif %}
-      </div>
+      <div class="co-logo">{% if job.company.logo_path %}<img src="{{ job.company.logo_path }}" style="width:100%;height:100%;object-fit:contain;border-radius:6px">{% else %}<i class="fas fa-building"></i>{% endif %}</div>
       <div><div class="co-name">{{ job.company.name }}</div><div class="co-job">{{ job.title }}</div></div>
     </div>
     <div style="display:flex;align-items:center;gap:12px;">
@@ -163,7 +126,7 @@
     </div>
   </div>
 
-  <!-- Consent Screen -->
+  <!-- Consent -->
   <div id="screenConsent">
     <div class="c-logo"><i class="fas fa-robot"></i></div>
     <div class="c-title">AI面接へようこそ</div>
@@ -173,7 +136,7 @@
         <div class="ci-row"><div class="ci-icon"><i class="fas fa-microphone"></i></div><span>声でお答えいただく面接形式です</span></div>
         <div class="ci-row"><div class="ci-icon"><i class="fas fa-user-tie"></i></div><span>AIアバターが面接官として対話します</span></div>
         <div class="ci-row"><div class="ci-icon"><i class="fas fa-clock"></i></div><span>所要時間：約{{ job.ai_interview_duration }}分</span></div>
-        <div class="ci-row"><div class="ci-icon"><i class="fas fa-volume-up"></i></div><span>スピーカーとマイクをご用意ください</span></div>
+        <div class="ci-row"><div class="ci-icon"><i class="fas fa-volume-up"></i></div><span>スピーカーとマイクをご用意ください（Chrome推奨）</span></div>
       </div>
       <label class="c-check">
         <input type="checkbox" id="consentCheck" onchange="document.getElementById('startBtn').disabled=!this.checked">
@@ -182,14 +145,14 @@
       <button class="btn-start" id="startBtn" disabled onclick="startInterview()">
         <i class="fas fa-play-circle"></i> 面接を開始する
       </button>
+      <div class="err-box" id="consentErr"></div>
     </div>
   </div>
 
-  <!-- Interview Screen -->
+  <!-- Interview -->
   <div id="screenInterview">
     <div class="iv-main">
-
-      <!-- Avatar -->
+      <!-- Avatar Panel -->
       <div class="av-panel">
         <div class="av-outer">
           <div class="av-waves" id="avWaves">
@@ -197,112 +160,67 @@
           </div>
           <div class="av-ring" id="avRing"></div>
           <div class="av-face" id="avFace">
-            <!-- Realistic human avatar SVG -->
             {% if job.avatar_gender == 'male' %}
             <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-              <!-- Background -->
               <defs>
-                <radialGradient id="bgM" cx="50%" cy="40%" r="60%">
-                  <stop offset="0%" stop-color="#2d1f5e"/>
-                  <stop offset="100%" stop-color="#0f0a2e"/>
-                </radialGradient>
-                <radialGradient id="skinM" cx="50%" cy="35%" r="55%">
-                  <stop offset="0%" stop-color="#f5cba7"/>
-                  <stop offset="100%" stop-color="#e8a87c"/>
-                </radialGradient>
-                <radialGradient id="cheekM" cx="50%" cy="50%" r="50%">
-                  <stop offset="0%" stop-color="rgba(220,120,80,.3)"/>
-                  <stop offset="100%" stop-color="rgba(220,120,80,0)"/>
-                </radialGradient>
+                <radialGradient id="bgM" cx="50%" cy="40%" r="60%"><stop offset="0%" stop-color="#2d1f5e"/><stop offset="100%" stop-color="#0f0a2e"/></radialGradient>
+                <radialGradient id="skinM" cx="50%" cy="35%" r="55%"><stop offset="0%" stop-color="#f5cba7"/><stop offset="100%" stop-color="#e8a87c"/></radialGradient>
               </defs>
               <circle cx="100" cy="100" r="100" fill="url(#bgM)"/>
-              <!-- Suit collar -->
-              <path d="M50,200 Q60,155 80,148 L100,160 L120,148 Q140,155 150,200 Z" fill="#1e3a5f"/>
-              <path d="M80,148 L100,175 L120,148 L100,160 Z" fill="#fff" opacity=".9"/>
-              <!-- Neck -->
+              <path d="M50,200 Q60,155 80,148 L100,160 L120,148 Q140,155 150,200Z" fill="#1e3a5f"/>
+              <path d="M80,148 L100,175 L120,148 L100,160Z" fill="#fff" opacity=".9"/>
               <rect x="86" y="138" width="28" height="20" rx="6" fill="url(#skinM)"/>
-              <!-- Head -->
               <ellipse cx="100" cy="108" rx="46" ry="52" fill="url(#skinM)"/>
-              <!-- Hair - short dark male -->
-              <path d="M54,95 Q54,50 100,48 Q146,50 146,95 Q140,60 100,58 Q60,60 54,95Z" fill="#2c1810"/>
-              <path d="M54,90 Q50,60 100,52 Q150,60 146,90" fill="none" stroke="#2c1810" stroke-width="12" stroke-linecap="round"/>
-              <!-- Ears -->
+              <path d="M54,90 Q50,56 100,52 Q150,56 146,90Q140,60 100,58Q60,60 54,90Z" fill="#2c1810"/>
               <ellipse cx="54" cy="112" rx="7" ry="9" fill="#e8a87c"/>
               <ellipse cx="146" cy="112" rx="7" ry="9" fill="#e8a87c"/>
-              <!-- Eyebrows - thick male -->
               <path d="M73,92 Q83,87 93,90" stroke="#2c1810" stroke-width="3" fill="none" stroke-linecap="round"/>
               <path d="M107,90 Q117,87 127,92" stroke="#2c1810" stroke-width="3" fill="none" stroke-linecap="round"/>
-              <!-- Eyes -->
               <ellipse cx="83" cy="102" rx="10" ry="9" fill="#fff"/>
               <ellipse cx="117" cy="102" rx="10" ry="9" fill="#fff"/>
-              <ellipse cx="84" cy="103" rx="6" ry="6" fill="#3d2b1f" id="meyeL"/>
-              <ellipse cx="118" cy="103" rx="6" ry="6" fill="#3d2b1f" id="meyeR"/>
+              <ellipse cx="84" cy="103" rx="6" ry="6" fill="#3d2b1f"/>
+              <ellipse cx="118" cy="103" rx="6" ry="6" fill="#3d2b1f"/>
               <circle cx="86" cy="101" r="2" fill="#fff"/>
               <circle cx="120" cy="101" r="2" fill="#fff"/>
-              <!-- Nose -->
               <path d="M96,112 Q100,120 104,112" stroke="#d4956a" stroke-width="1.5" fill="none" stroke-linecap="round"/>
               <path d="M92,118 Q100,122 108,118" stroke="#d4956a" stroke-width="1.5" fill="none" stroke-linecap="round"/>
-              <!-- Mouth -->
-              <g id="avMouthM">
-                <path d="M88,130 Q100,136 112,130" stroke="#c47a5a" stroke-width="2" fill="none" stroke-linecap="round"/>
+              <g id="mouthEl">
+                <path id="mouthPath" d="M88,130 Q100,136 112,130" stroke="#c47a5a" stroke-width="2.5" fill="none" stroke-linecap="round"/>
               </g>
-              <!-- Jacket lapels -->
-              <path d="M70,170 Q80,155 90,150 L100,162" fill="#2a4f7c" opacity=".8"/>
-              <path d="M130,170 Q120,155 110,150 L100,162" fill="#2a4f7c" opacity=".8"/>
             </svg>
             {% else %}
             <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
               <defs>
-                <radialGradient id="bgF" cx="50%" cy="40%" r="60%">
-                  <stop offset="0%" stop-color="#2d1f5e"/>
-                  <stop offset="100%" stop-color="#0f0a2e"/>
-                </radialGradient>
-                <radialGradient id="skinF" cx="50%" cy="35%" r="55%">
-                  <stop offset="0%" stop-color="#fde8d0"/>
-                  <stop offset="100%" stop-color="#f5cba7"/>
-                </radialGradient>
+                <radialGradient id="bgF" cx="50%" cy="40%" r="60%"><stop offset="0%" stop-color="#2d1f5e"/><stop offset="100%" stop-color="#0f0a2e"/></radialGradient>
+                <radialGradient id="skinF" cx="50%" cy="35%" r="55%"><stop offset="0%" stop-color="#fde8d0"/><stop offset="100%" stop-color="#f5cba7"/></radialGradient>
               </defs>
               <circle cx="100" cy="100" r="100" fill="url(#bgF)"/>
-              <!-- Blouse / top -->
-              <path d="M45,200 Q55,155 78,148 L100,158 L122,148 Q145,155 155,200 Z" fill="#6b48d6" opacity=".85"/>
-              <!-- Neck -->
+              <path d="M45,200 Q55,155 78,148 L100,158 L122,148 Q145,155 155,200Z" fill="#6b48d6" opacity=".85"/>
               <rect x="87" y="138" width="26" height="20" rx="6" fill="url(#skinF)"/>
-              <!-- Hair back layer -->
               <ellipse cx="100" cy="95" rx="52" ry="60" fill="#3d1c0d"/>
-              <!-- Head -->
               <ellipse cx="100" cy="108" rx="44" ry="50" fill="url(#skinF)"/>
-              <!-- Hair front - long flowing -->
               <path d="M56,88 Q52,50 100,46 Q148,50 144,88" fill="#4a2210" stroke="#3d1c0d" stroke-width="2"/>
-              <path d="M56,88 Q50,130 48,160" stroke="#3d1c0d" stroke-width="14" fill="none" stroke-linecap="round"/>
-              <path d="M144,88 Q150,130 152,160" stroke="#3d1c0d" stroke-width="14" fill="none" stroke-linecap="round"/>
-              <!-- Hair shine -->
+              <path d="M56,88 Q50,130 48,165" stroke="#3d1c0d" stroke-width="15" fill="none" stroke-linecap="round"/>
+              <path d="M144,88 Q150,130 152,165" stroke="#3d1c0d" stroke-width="15" fill="none" stroke-linecap="round"/>
               <path d="M75,55 Q90,48 105,52" stroke="rgba(255,200,150,.3)" stroke-width="4" fill="none" stroke-linecap="round"/>
-              <!-- Ears -->
               <ellipse cx="56" cy="112" rx="6.5" ry="8.5" fill="#f5cba7"/>
               <ellipse cx="144" cy="112" rx="6.5" ry="8.5" fill="#f5cba7"/>
-              <!-- Eyebrows - thin female -->
               <path d="M74,92 Q84,86 93,89" stroke="#4a2210" stroke-width="2" fill="none" stroke-linecap="round"/>
               <path d="M107,89 Q116,86 126,92" stroke="#4a2210" stroke-width="2" fill="none" stroke-linecap="round"/>
-              <!-- Eyes with lashes -->
               <ellipse cx="83" cy="102" rx="10.5" ry="9" fill="#fff"/>
               <ellipse cx="117" cy="102" rx="10.5" ry="9" fill="#fff"/>
-              <ellipse cx="83" cy="103" rx="6.5" ry="6.5" fill="#2c1a10" id="feyeL"/>
-              <ellipse cx="117" cy="103" rx="6.5" ry="6.5" fill="#2c1a10" id="feyeR"/>
+              <ellipse cx="83" cy="103" rx="6.5" ry="6.5" fill="#2c1a10"/>
+              <ellipse cx="117" cy="103" rx="6.5" ry="6.5" fill="#2c1a10"/>
               <circle cx="85" cy="101" r="2.2" fill="#fff"/>
               <circle cx="119" cy="101" r="2.2" fill="#fff"/>
-              <!-- Lashes -->
               <path d="M73,95 Q77,91 83,93" stroke="#2c1a10" stroke-width="1.5" fill="none"/>
               <path d="M107,93 Q113,91 122,95" stroke="#2c1a10" stroke-width="1.5" fill="none"/>
-              <!-- Blush -->
               <ellipse cx="70" cy="116" rx="10" ry="6" fill="rgba(255,150,150,.22)"/>
               <ellipse cx="130" cy="116" rx="10" ry="6" fill="rgba(255,150,150,.22)"/>
-              <!-- Nose -->
               <path d="M97,112 Q100,119 103,112" stroke="#e8a87c" stroke-width="1.2" fill="none" stroke-linecap="round"/>
-              <!-- Mouth -->
-              <g id="avMouthF">
-                <path d="M89,130 Q100,138 111,130" stroke="#e07070" stroke-width="2" fill="rgba(220,100,100,.15)" stroke-linecap="round"/>
+              <g id="mouthEl">
+                <path id="mouthPath" d="M89,130 Q100,138 111,130" stroke="#e07070" stroke-width="2" fill="rgba(220,100,100,.1)" stroke-linecap="round"/>
               </g>
-              <!-- Earrings -->
               <circle cx="56" cy="122" r="3" fill="#c9a227" opacity=".8"/>
               <circle cx="144" cy="122" r="3" fill="#c9a227" opacity=".8"/>
             </svg>
@@ -317,6 +235,7 @@
       <!-- Chat -->
       <div class="chat-panel">
         <div class="msgs" id="msgs"></div>
+        <div class="err-box" id="chatErr"></div>
         <div class="vbar">
           <button class="mic-btn idle" id="micBtn" onclick="toggleMic()">
             <i class="fas fa-microphone"></i>
@@ -341,71 +260,73 @@
     <div class="comp-body" style="white-space:pre-line">{{ job.complete_body_ja or 'ご参加いただきありがとうございました。\n結果は担当者よりご連絡いたします。' }}</div>
     <div class="comp-co">{{ job.company.name }} 採用担当</div>
   </div>
-
 </div>
 
 <script>
 const TOKEN = "{{ interview.token }}";
 const GENDER = "{{ job.avatar_gender or 'female' }}";
-const LANG = "{{ job.interview_language or 'ja' }}";
-const LANG_CODE = LANG==='en'?'en-US':LANG==='vi'?'vi-VN':'ja-JP';
+const LANG_CODE = "{{ 'en-US' if job.interview_language == 'en' else 'vi-VN' if job.interview_language == 'vi' else 'ja-JP' }}";
 
 let state = 'idle';
 let recognition = null;
 let synth = window.speechSynthesis;
 let finalTranscript = '';
 let silenceTimer = null;
-let turnCount = 0;
-let totalQuestions = 0;
+let turnCount = 0, totalQuestions = 0;
 let isCompleted = false;
-let audioCtx=null,analyser=null,micStream=null,animFrame=null;
+let audioCtx=null, analyser=null, micStream=null, animFrame=null;
 let mouthAnim = null;
+let voicesReady = false;
+let voicesList = [];
 
-// ── Status ─────────────────────────────────────────────────────────────────
+// ── Voice loading (fix: async) ───────────────────────────────────────────
+function loadVoices() {
+  return new Promise(resolve => {
+    const v = synth.getVoices();
+    if (v.length > 0) { voicesList = v; voicesReady = true; resolve(v); return; }
+    synth.onvoiceschanged = () => {
+      voicesList = synth.getVoices();
+      voicesReady = true;
+      resolve(voicesList);
+    };
+    // Timeout fallback
+    setTimeout(() => { voicesList = synth.getVoices(); voicesReady = true; resolve(voicesList); }, 1500);
+  });
+}
+
+// ── Status ────────────────────────────────────────────────────────────────
 function setStatus(s, text, sub='') {
   state = s;
-  const dot = document.getElementById('sdot');
-  const st = document.getElementById('stext');
-  const vs = document.getElementById('vstatus');
-  const vb = document.getElementById('vsub');
-  const mic = document.getElementById('micBtn');
-  const wf = document.getElementById('waveform');
-  const waves = document.getElementById('avWaves');
-  const ring = document.getElementById('avRing');
-  const mouth = document.getElementById(GENDER==='male'?'avMouthM':'avMouthF');
-
-  dot.className = 'sdot '+(s==='listening'?'listening':s==='speaking'?'speaking':s==='thinking'?'thinking':'');
-  st.textContent = text; vs.textContent = text;
-  if(sub) vb.textContent = sub;
-
-  waves.classList.toggle('speaking-anim', s==='ai_speaking');
-  ring.classList.toggle('active', s==='ai_speaking'||s==='listening');
-  wf.classList.toggle('listening-wf', s==='listening');
-  mic.className = 'mic-btn '+(s==='listening'?'listening':s==='ai_speaking'||s==='thinking'?'disabled':'idle');
-
-  // Mouth animation
-  if(s==='ai_speaking'){
+  document.getElementById('sdot').className = 'sdot '+(s==='listening'?'listening':s==='ai_speaking'?'speaking':s==='thinking'?'thinking':'');
+  document.getElementById('stext').textContent = text;
+  document.getElementById('vstatus').textContent = text;
+  if(sub) document.getElementById('vsub').textContent = sub;
+  document.getElementById('avWaves').classList.toggle('speaking-anim', s==='ai_speaking');
+  document.getElementById('avRing').classList.toggle('active', s==='ai_speaking'||s==='listening');
+  document.getElementById('waveform').classList.toggle('listening-wf', s==='listening');
+  document.getElementById('micBtn').className = 'mic-btn '+(s==='listening'?'listening':s==='ai_speaking'||s==='thinking'?'disabled':'idle');
+  // Mouth
+  const mouth = document.getElementById('mouthPath');
+  if(s==='ai_speaking') {
     if(!mouthAnim && mouth) {
       mouthAnim = setInterval(()=>{
-        const open = Math.random()>.4;
-        if(GENDER==='male'){
-          mouth.querySelector('path').setAttribute('d', open
-            ?'M88,130 Q100,140 112,130 Q100,134 88,130'
-            :'M88,130 Q100,136 112,130');
-        } else {
-          mouth.querySelector('path').setAttribute('d', open
-            ?'M89,130 Q100,142 111,130 Q100,136 89,130'
-            :'M89,130 Q100,138 111,130');
-        }
-      },120);
+        const o = Math.random()>.4;
+        mouth.setAttribute('d', GENDER==='male'
+          ? (o?'M88,130 Q100,142 112,130':'M88,130 Q100,134 112,130')
+          : (o?'M89,130 Q100,144 111,130':'M89,130 Q100,135 111,130'));
+      }, 130);
     }
   } else {
     if(mouthAnim){clearInterval(mouthAnim);mouthAnim=null;}
-    if(mouth){
-      if(GENDER==='male') mouth.querySelector('path').setAttribute('d','M88,130 Q100,136 112,130');
-      else mouth.querySelector('path').setAttribute('d','M89,130 Q100,138 111,130');
-    }
+    if(mouth) mouth.setAttribute('d', GENDER==='male'?'M88,130 Q100,136 112,130':'M89,130 Q100,138 111,130');
   }
+}
+
+function showError(msg) {
+  const el = document.getElementById('chatErr');
+  el.textContent = '⚠ ' + msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 8000);
 }
 
 // ── Messages ──────────────────────────────────────────────────────────────
@@ -417,178 +338,218 @@ function appendMsg(role, text) {
   div.innerHTML = `<div class="mavatar"><i class="fas fa-${role==='ai'?'user-tie':'user'}"></i></div>
     <div class="mbubble"><div class="mlabel">${role==='ai'?'AI面接官':'あなた'}</div>
     <div class="mtext">${clean.replace(/\n/g,'<br>')}</div></div>`;
-  msgs.appendChild(div);
-  msgs.scrollTop = msgs.scrollHeight;
+  msgs.appendChild(div); msgs.scrollTop = msgs.scrollHeight;
 }
 function showTyping(){
   const msgs=document.getElementById('msgs');
-  const d=document.createElement('div');d.id='typing';d.className='msg msg-ai typing-msg';
+  const d=document.createElement('div'); d.id='typing'; d.className='msg msg-ai typing-msg';
   d.innerHTML='<div class="mavatar"><i class="fas fa-user-tie"></i></div><div class="mbubble"><div class="mlabel">AI面接官</div><div class="mtext"><div class="tdots"><span></span><span></span><span></span></div></div></div>';
-  msgs.appendChild(d);msgs.scrollTop=msgs.scrollHeight;
+  msgs.appendChild(d); msgs.scrollTop=msgs.scrollHeight;
 }
 function removeTyping(){const t=document.getElementById('typing');if(t)t.remove();}
 
 // ── TTS ───────────────────────────────────────────────────────────────────
-function speak(text, onEnd) {
+async function speak(text, onEnd) {
   synth.cancel();
   const clean = text.replace('[INTERVIEW_COMPLETE]','').trim();
-  if(!clean){onEnd&&onEnd();return;}
+  if(!clean) { onEnd&&onEnd(); return; }
+
+  // Wait for voices if not ready
+  if(!voicesReady) await loadVoices();
+
   const u = new SpeechSynthesisUtterance(clean);
-  u.lang = LANG_CODE; u.rate = 0.92;
-  u.pitch = GENDER==='female'?1.15:0.88;
-  const voices = synth.getVoices();
-  const match = voices.find(v=>v.lang.startsWith(LANG_CODE.slice(0,2)));
-  if(match) u.voice = match;
-  u.onstart = ()=>setStatus('ai_speaking','AI面接官が話しています...','話し終わると自動でマイクがONになります');
-  u.onend = ()=>{onEnd&&onEnd();};
-  u.onerror = ()=>{onEnd&&onEnd();};
+  u.lang = LANG_CODE;
+  u.rate = 0.9;
+  u.pitch = GENDER==='female' ? 1.1 : 0.85;
+  u.volume = 1.0;
+
+  // Pick best voice for language
+  const langPrefix = LANG_CODE.slice(0,2);
+  const preferFemale = GENDER === 'female';
+  let voice = voicesList.find(v =>
+    v.lang.startsWith(langPrefix) &&
+    (preferFemale ? /female|woman|kyoko|haruka|nanami|hikari/i.test(v.name) : /male|man|otoya|keita/i.test(v.name))
+  ) || voicesList.find(v => v.lang === LANG_CODE)
+    || voicesList.find(v => v.lang.startsWith(langPrefix))
+    || voicesList[0];
+  if(voice) u.voice = voice;
+
+  // Chrome bug workaround: speechSynthesis pauses after ~15s
+  const resumeTimer = setInterval(()=>{ if(synth.speaking){synth.pause();synth.resume();}}, 10000);
+
+  u.onstart = () => setStatus('ai_speaking','AI面接官が話しています...','話し終わると自動でマイクがONになります');
+  u.onend = () => { clearInterval(resumeTimer); onEnd&&onEnd(); };
+  u.onerror = (e) => {
+    clearInterval(resumeTimer);
+    console.warn('TTS error:', e.error);
+    onEnd&&onEnd(); // エラーでも続行
+  };
   synth.speak(u);
 }
 
 // ── Speech Recognition ─────────────────────────────────────────────────────
-function setupRecognition(){
-  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-  if(!SR){alert('Chrome / Edge をお使いください（音声認識対応ブラウザが必要です）');return false;}
-  recognition=new SR();
-  recognition.lang=LANG_CODE;recognition.continuous=true;recognition.interimResults=true;
-  recognition.onresult=e=>{
-    let interim='';
-    for(let i=e.resultIndex;i<e.results.length;i++){
-      const t=e.results[i][0].transcript;
-      if(e.results[i].isFinal)finalTranscript+=t;else interim+=t;
+function setupRecognition() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(!SR) {
+    showError('このブラウザは音声認識に対応していません。Chrome / Edge をご利用ください。');
+    return false;
+  }
+  recognition = new SR();
+  recognition.lang = LANG_CODE;
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  recognition.onresult = e => {
+    let interim = '';
+    for(let i=e.resultIndex; i<e.results.length; i++) {
+      const t = e.results[i][0].transcript;
+      if(e.results[i].isFinal) finalTranscript += t; else interim += t;
     }
-    document.getElementById('vtranscript').textContent=finalTranscript+interim;
+    document.getElementById('vtranscript').textContent = finalTranscript + interim;
     resetSilence();
   };
-  recognition.onend=()=>{if(state==='listening'&&!isCompleted)try{recognition.start();}catch(e){}};
-  recognition.onerror=e=>{if(e.error!=='no-speech')console.warn('STT error:',e.error);};
+  recognition.onend = () => { if(state==='listening'&&!isCompleted) try{recognition.start();}catch(e){} };
+  recognition.onerror = e => { if(e.error!=='no-speech') console.warn('STT:',e.error); };
   return true;
 }
 
-function startListening(){
-  if(isCompleted)return;
-  finalTranscript='';
-  document.getElementById('vtranscript').textContent='';
+function startListening() {
+  if(isCompleted) return;
+  finalTranscript = '';
+  document.getElementById('vtranscript').textContent = '';
   setStatus('listening','お話しください...','3秒間の沈黙で自動送信されます');
-  try{recognition.start();}catch(e){}
-  startMicMeter();resetSilence();
+  try { recognition.start(); } catch(e) {}
+  startMicMeter(); resetSilence();
 }
-function stopListening(){clearSilence();try{recognition.stop();}catch(e){}stopMicMeter();}
-function resetSilence(){
+function stopListening() { clearSilence(); try{recognition.stop();}catch(e){} stopMicMeter(); }
+function resetSilence() {
   clearSilence();
-  silenceTimer=setTimeout(()=>{
-    if(state==='listening'){
-      const txt=finalTranscript.trim();
-      if(txt){stopListening();sendMsg(txt);}
+  silenceTimer = setTimeout(() => {
+    if(state==='listening') {
+      const txt = finalTranscript.trim();
+      if(txt) { stopListening(); sendMsg(txt); }
       else resetSilence();
     }
-  },3000);
+  }, 3000);
 }
-function clearSilence(){if(silenceTimer){clearTimeout(silenceTimer);silenceTimer=null;}}
-
-function toggleMic(){
-  if(state==='ai_speaking'||state==='thinking'||isCompleted)return;
-  if(state==='listening'){
-    stopListening();
-    const txt=finalTranscript.trim();
-    if(txt)sendMsg(txt);else setStatus('idle','待機中','');
-  } else startListening();
+function clearSilence() { if(silenceTimer){clearTimeout(silenceTimer);silenceTimer=null;} }
+function toggleMic() {
+  if(state==='ai_speaking'||state==='thinking'||isCompleted) return;
+  if(state==='listening') { stopListening(); const t=finalTranscript.trim(); if(t) sendMsg(t); else setStatus('idle','待機中',''); }
+  else startListening();
 }
 
 // ── Mic meter ─────────────────────────────────────────────────────────────
-async function startMicMeter(){
-  try{
-    micStream=await navigator.mediaDevices.getUserMedia({audio:true});
-    audioCtx=new AudioContext();analyser=audioCtx.createAnalyser();analyser.fftSize=256;
+async function startMicMeter() {
+  try {
+    micStream = await navigator.mediaDevices.getUserMedia({audio:true});
+    audioCtx = new AudioContext(); analyser = audioCtx.createAnalyser(); analyser.fftSize = 256;
     audioCtx.createMediaStreamSource(micStream).connect(analyser);
-    animMeter();
-  }catch(e){}
+    const data = new Uint8Array(analyser.frequencyBinCount);
+    const bars = document.querySelectorAll('.wbar');
+    const fill = document.getElementById('voiceFill');
+    function loop() {
+      animFrame = requestAnimationFrame(loop);
+      analyser.getByteFrequencyData(data);
+      fill.style.width = Math.min(data.slice(0,32).reduce((a,b)=>a+b,0)/32/128*100,100)+'%';
+      bars.forEach((b,i)=>{ b.style.height=Math.max(3,(data[i*2]||0)/255*26)+'px'; });
+    } loop();
+  } catch(e) { console.warn('Mic meter:', e); }
 }
-function animMeter(){
-  if(!analyser)return;
-  const data=new Uint8Array(analyser.frequencyBinCount);
-  const bars=document.querySelectorAll('.wbar');
-  const fill=document.getElementById('voiceFill');
-  function loop(){
-    animFrame=requestAnimationFrame(loop);
-    analyser.getByteFrequencyData(data);
-    const avg=data.slice(0,32).reduce((a,b)=>a+b,0)/32;
-    fill.style.width=Math.min(avg/128*100,100)+'%';
-    bars.forEach((b,i)=>{b.style.height=Math.max(3,(data[i*2]||0)/255*26)+'px';});
-  }loop();
-}
-function stopMicMeter(){
+function stopMicMeter() {
   if(animFrame){cancelAnimationFrame(animFrame);animFrame=null;}
   if(micStream){micStream.getTracks().forEach(t=>t.stop());micStream=null;}
-  if(audioCtx){audioCtx.close();audioCtx=null;}
-  analyser=null;
+  if(audioCtx){audioCtx.close();audioCtx=null;} analyser=null;
   document.getElementById('voiceFill').style.width='0%';
   document.querySelectorAll('.wbar').forEach(b=>b.style.height='3px');
 }
 
-// ── API ────────────────────────────────────────────────────────────────────
-async function startInterview(){
-  const btn=document.getElementById('startBtn');
-  btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> 開始中...';
-  if(!setupRecognition())return;
-  try{await navigator.mediaDevices.getUserMedia({audio:true});}
-  catch(e){alert('マイクへのアクセスを許可してください。');return;}
+// ── Start Interview ────────────────────────────────────────────────────────
+async function startInterview() {
+  const btn = document.getElementById('startBtn');
+  btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 開始中...';
 
-  const res=await fetch(`/interview/${TOKEN}/start`,{method:'POST'});
-  const data=await res.json();
+  if(!setupRecognition()) { btn.disabled=false; btn.innerHTML='<i class="fas fa-play-circle"></i> 面接を開始する'; return; }
 
-  document.getElementById('screenConsent').style.display='none';
-  document.getElementById('screenInterview').classList.add('active');
+  try { await navigator.mediaDevices.getUserMedia({audio:true}); }
+  catch(e) {
+    const err = document.getElementById('consentErr');
+    err.textContent = '⚠ マイクへのアクセスを許可してください。ブラウザの設定を確認してください。';
+    err.classList.add('show');
+    btn.disabled=false; btn.innerHTML='<i class="fas fa-play-circle"></i> 面接を開始する'; return;
+  }
 
-  // fetch total questions
+  // Load voices in background
+  loadVoices();
+
+  let data;
+  try {
+    const res = await fetch(`/interview/${TOKEN}/start`, {method:'POST'});
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    data = await res.json();
+  } catch(e) {
+    const err = document.getElementById('consentErr');
+    err.textContent = '⚠ サーバーへの接続に失敗しました: ' + e.message;
+    err.classList.add('show');
+    btn.disabled=false; btn.innerHTML='<i class="fas fa-play-circle"></i> 面接を開始する'; return;
+  }
+
+  // Fetch question count
   fetch(`/interview/${TOKEN}/messages`).then(r=>r.json()).then(d=>{
-    totalQuestions=d.total_questions||0;
+    totalQuestions = d.total_questions||0;
   }).catch(()=>{});
 
-  appendMsg('ai',data.greeting);
-  speak(data.greeting,()=>startListening());
+  document.getElementById('screenConsent').style.display = 'none';
+  document.getElementById('screenInterview').classList.add('active');
+  appendMsg('ai', data.greeting);
+  speak(data.greeting, () => startListening());
 }
 
-async function sendMsg(text){
-  if(isCompleted)return;
+// ── Send Message ───────────────────────────────────────────────────────────
+async function sendMsg(text) {
+  if(isCompleted) return;
   setStatus('thinking','考え中...','AIが回答を生成しています');
-  appendMsg('user',text);
-  document.getElementById('vtranscript').textContent='';
-  showTyping();turnCount++;
-  if(totalQuestions>0)document.getElementById('turnCounter').textContent=`${turnCount}/${totalQuestions}問`;
+  appendMsg('user', text);
+  document.getElementById('vtranscript').textContent = '';
+  showTyping(); turnCount++;
+  if(totalQuestions>0) document.getElementById('turnCounter').textContent = `${turnCount}/${totalQuestions}問`;
 
-  try{
-    const res=await fetch(`/interview/${TOKEN}/message`,{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({message:text}),
+  let data;
+  try {
+    const res = await fetch(`/interview/${TOKEN}/message`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({message: text}),
     });
-    if(!res.ok){
-      const err=await res.text();
-      throw new Error(`HTTP ${res.status}: ${err}`);
+    const body = await res.text();
+    if(!res.ok) {
+      // Show actual error from server
+      showError(`サーバーエラー (${res.status}): ${body}`);
+      removeTyping();
+      setStatus('idle','マイクボタンで再試行できます','');
+      return;
     }
-    const data=await res.json();
+    data = JSON.parse(body);
+  } catch(e) {
     removeTyping();
-    appendMsg('ai',data.reply);
-    if(data.completed||data.reply.includes('[INTERVIEW_COMPLETE]')){
-      isCompleted=true;synth.cancel();
-      speak(data.reply,()=>{
-        setTimeout(()=>{
-          document.getElementById('screenInterview').classList.remove('active');
-          document.getElementById('screenCompleted').classList.add('active');
-        },1500);
-      });
-    } else {
-      speak(data.reply,()=>startListening());
-    }
-  }catch(e){
-    removeTyping();
-    console.error('sendMsg error:',e);
-    appendMsg('ai','通信エラーが発生しました。マイクボタンを押して再度お試しください。');
-    setStatus('idle','エラー - マイクボタンで再試行できます','');
+    showError('通信エラー: ' + e.message + ' (マイクボタンを押して再試行してください)');
+    setStatus('idle','再試行できます','');
+    return;
+  }
+
+  removeTyping();
+  appendMsg('ai', data.reply);
+
+  if(data.completed || data.reply.includes('[INTERVIEW_COMPLETE]')) {
+    isCompleted = true; synth.cancel();
+    speak(data.reply, () => {
+      setTimeout(() => {
+        document.getElementById('screenInterview').classList.remove('active');
+        document.getElementById('screenCompleted').classList.add('active');
+      }, 1500);
+    });
+  } else {
+    speak(data.reply, () => startListening());
   }
 }
-
-if(synth.onvoiceschanged!==undefined)synth.onvoiceschanged=()=>{};
 </script>
 </body>
 </html>
