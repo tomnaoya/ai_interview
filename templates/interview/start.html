@@ -8,10 +8,11 @@
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
     :root{--primary:#4f46e5;--success:#10b981;--danger:#ef4444;--warning:#f59e0b;}
-    body{font-family:'Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif;background:#0d0d1a;min-height:100vh;display:flex;flex-direction:column;align-items:center;color:#fff;overflow:hidden;}
+    html,body{height:100%;margin:0;}
+    body{font-family:'Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif;background:#0d0d1a;height:100vh;display:flex;flex-direction:column;align-items:center;color:#fff;overflow:hidden;}
     .bg{position:fixed;inset:0;z-index:0;background:radial-gradient(ellipse at 15% 50%,rgba(79,70,229,.25) 0%,transparent 55%),radial-gradient(ellipse at 85% 20%,rgba(124,58,237,.18) 0%,transparent 50%),#0d0d1a;}
     .bg-grid{position:fixed;inset:0;z-index:0;background-image:linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);background-size:48px 48px;}
-    .app{position:relative;z-index:1;width:100%;max-width:960px;min-height:100vh;display:flex;flex-direction:column;padding:0 16px;}
+    .app{position:relative;z-index:1;width:100%;max-width:960px;height:100vh;display:flex;flex-direction:column;padding:0 16px;overflow:hidden;}
     .header{display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid rgba(255,255,255,.07);}
     .co-info{display:flex;align-items:center;gap:10px;}
     .co-logo{width:30px;height:30px;border-radius:6px;background:rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center;font-size:13px;color:rgba(255,255,255,.5);}
@@ -39,11 +40,11 @@
     .btn-start:disabled{opacity:.35;cursor:not-allowed;}
     .btn-start:not(:disabled):hover{opacity:.88;transform:translateY(-1px);}
     /* Interview */
-    #screenInterview{flex:1;display:none;flex-direction:column;padding-bottom:16px;}
+    #screenInterview{flex:1;display:none;flex-direction:column;padding-bottom:16px;min-height:0;overflow:hidden;}
     #screenInterview.active{display:flex;}
-    .iv-main{flex:1;display:flex;gap:20px;padding:20px 0;min-height:0;}
+    .iv-main{flex:1;display:flex;gap:20px;padding:20px 0;min-height:0;overflow:hidden;}
     /* Avatar */
-    .av-panel{width:260px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:14px;}
+    .av-panel{width:260px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:14px;align-self:flex-start;position:sticky;top:0;}
     .av-outer{position:relative;width:190px;height:190px;}
     .av-ring{position:absolute;inset:-6px;border-radius:50%;border:2.5px solid rgba(79,70,229,0);transition:border-color .4s;}
     .av-ring.active{border-color:rgba(79,70,229,.7);animation:ring-spin 4s linear infinite;}
@@ -61,13 +62,23 @@
     .voice-bar-sm{width:150px;height:5px;background:rgba(255,255,255,.08);border-radius:99px;overflow:hidden;}
     .voice-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--success),#34d399);width:0%;transition:width .06s;}
     /* Chat */
-    .chat-panel{flex:1;display:flex;flex-direction:column;gap:10px;min-height:0;}
-    .msgs{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding-right:4px;
-      scroll-behavior:smooth;}
-    .msgs::-webkit-scrollbar{width:3px;}
-    .msgs::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08);border-radius:2px;}
-    /* Spacer to push content to bottom initially */
-    .msgs-spacer{flex:1;min-height:0;}
+    .chat-panel{flex:1;display:flex;flex-direction:column;gap:10px;min-height:0;overflow:hidden;}
+    .msgs{
+      flex:1;
+      overflow-y:auto;
+      overflow-x:hidden;
+      display:flex;
+      flex-direction:column;
+      justify-content:flex-end;
+      gap:10px;
+      padding-right:8px;
+      min-height:0;
+    }
+    .msgs::-webkit-scrollbar{width:4px;}
+    .msgs::-webkit-scrollbar-track{background:rgba(255,255,255,.03);}
+    .msgs::-webkit-scrollbar-thumb{background:rgba(255,255,255,.15);border-radius:2px;}
+    .msgs-inner{display:flex;flex-direction:column;gap:10px;}
+    .msgs-spacer{display:none;}
     .msg{display:flex;gap:8px;}
     .msg-ai{flex-direction:row;}
     .msg-user{flex-direction:row-reverse;}
@@ -237,7 +248,7 @@
 
       <!-- Chat -->
       <div class="chat-panel">
-        <div class="msgs" id="msgs"><div class="msgs-spacer" id="msgsSpacer"></div></div>
+        <div class="msgs" id="msgs"><div class="msgs-inner" id="msgsInner"></div></div>
         <div class="err-box" id="chatErr"></div>
         <div class="vbar">
           <button class="mic-btn idle" id="micBtn" onclick="toggleMic()">
@@ -348,28 +359,30 @@ function cleanText(text) {
 }
 
 function appendMsg(role, text) {
+  const inner = document.getElementById('msgsInner');
   const msgs = document.getElementById('msgs');
-  const spacer = document.getElementById('msgsSpacer');
   const div = document.createElement('div');
   div.className = 'msg msg-'+role;
   const clean = cleanText(text);
   div.innerHTML = `<div class="mavatar"><i class="fas fa-${role==='ai'?'user-tie':'user'}"></i></div>
     <div class="mbubble"><div class="mlabel">${role==='ai'?'AI面接官':'あなた'}</div>
     <div class="mtext">${clean.replace(/\n/g,'<br>')}</div></div>`;
-  // Insert before spacer (spacer keeps content at bottom)
-  msgs.insertBefore(div, spacer);
-  // Remove spacer once content fills the area
-  if(msgs.scrollHeight > msgs.clientHeight) spacer.style.display = 'none';
-  msgs.scrollTop = msgs.scrollHeight;
+  inner.appendChild(div);
+  // Always scroll to bottom
+  requestAnimationFrame(() => { msgs.scrollTop = msgs.scrollHeight; });
 }
 function showTyping(){
+  const inner=document.getElementById('msgsInner');
   const msgs=document.getElementById('msgs');
-  const spacer=document.getElementById('msgsSpacer');
   const d=document.createElement('div'); d.id='typing'; d.className='msg msg-ai typing-msg';
   d.innerHTML='<div class="mavatar"><i class="fas fa-user-tie"></i></div><div class="mbubble"><div class="mlabel">AI面接官</div><div class="mtext"><div class="tdots"><span></span><span></span><span></span></div></div></div>';
-  msgs.insertBefore(d, spacer); msgs.scrollTop=msgs.scrollHeight;
+  inner.appendChild(d);
+  requestAnimationFrame(() => { msgs.scrollTop = msgs.scrollHeight; });
 }
-function removeTyping(){const t=document.getElementById('typing');if(t)t.remove();}
+function removeTyping(){
+  const t=document.getElementById('typing');
+  if(t){ t.remove(); const msgs=document.getElementById('msgs'); msgs.scrollTop=msgs.scrollHeight; }
+}
 
 // ── TTS ───────────────────────────────────────────────────────────────────
 async function speak(text, onEnd) {
