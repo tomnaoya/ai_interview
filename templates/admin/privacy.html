@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}プライバシーポリシー管理{% endblock %}
+{% block page_title %}プライバシーポリシー管理{% endblock %}
+
+{% block content %}
+<div class="toolbar">
+  <a href="/admin/privacy/new" class="btn btn-primary"><i class="fas fa-plus"></i> 新規作成</a>
+</div>
+<div class="card">
+  <div class="table-wrapper">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>タイトル</th>
+          <th>対象企業</th>
+          <th>バージョン</th>
+          <th>ステータス</th>
+          <th>更新日</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in policies %}
+        <tr>
+          <td><strong>{{ p.title }}</strong></td>
+          <td>{% if p.company_id %}{{ p.company.name if p.company else '-' }}{% else %}<span class="badge badge-blue">全企業共通</span>{% endif %}</td>
+          <td>v{{ p.version }}</td>
+          <td><span class="badge {% if p.is_active %}badge-active{% else %}badge-inactive{% endif %}">{{ '有効' if p.is_active else '無効' }}</span></td>
+          <td>{{ p.updated_at.strftime('%Y/%m/%d') }}</td>
+          <td class="actions">
+            <a href="/admin/privacy/{{ p.id }}/edit" class="btn btn-sm btn-outline"><i class="fas fa-edit"></i></a>
+            <form method="POST" action="/admin/privacy/{{ p.id }}/delete" style="display:inline" onsubmit="return confirm('削除しますか？')">
+              <button type="submit" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="text-center text-muted">ポリシーがありません</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

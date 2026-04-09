@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}{{ '企業編集' if company else '企業追加' }}{% endblock %}
+{% block page_title %}{{ '企業情報編集' if company else '企業情報追加' }}{% endblock %}
+
+{% block content %}
+<div class="card form-card">
+  <form method="POST" enctype="multipart/form-data" action="{{ '/admin/companies/' ~ company.id ~ '/edit' if company else '/admin/companies/new' }}">
+    <div class="form-grid">
+      <div class="form-group">
+        <label>企業名 <span class="required">*</span></label>
+        <input type="text" name="name" value="{{ company.name if company else '' }}" required>
+      </div>
+      <div class="form-group">
+        <label>企業名（カナ）</label>
+        <input type="text" name="name_kana" value="{{ company.name_kana if company else '' }}">
+      </div>
+      <div class="form-group">
+        <label>業種</label>
+        <select name="industry">
+          <option value="">選択してください</option>
+          {% for ind in ['IT・通信', '製造業', '金融・保険', '医療・福祉', '教育', '小売・流通', '建設・不動産', 'サービス業', 'その他'] %}
+          <option value="{{ ind }}" {% if company and company.industry == ind %}selected{% endif %}>{{ ind }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>企業規模</label>
+        <select name="size">
+          <option value="">選択してください</option>
+          {% for s in ['1〜10名', '11〜50名', '51〜100名', '101〜300名', '301〜1000名', '1001名以上'] %}
+          <option value="{{ s }}" {% if company and company.size == s %}selected{% endif %}>{{ s }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>電話番号</label>
+        <input type="tel" name="phone" value="{{ company.phone if company else '' }}">
+      </div>
+      <div class="form-group">
+        <label>ウェブサイト</label>
+        <input type="url" name="website" value="{{ company.website if company else '' }}" placeholder="https://">
+      </div>
+      <div class="form-group form-full">
+        <label>住所</label>
+        <input type="text" name="address" value="{{ company.address if company else '' }}">
+      </div>
+      <div class="form-group form-full">
+        <label>会社説明</label>
+        <textarea name="description" rows="4">{{ company.description if company else '' }}</textarea>
+      </div>
+      <div class="form-group">
+        <label>ロゴ画像</label>
+        {% if company and company.logo_path %}
+        <div class="current-image">
+          <img src="{{ company.logo_path }}" class="preview-image">
+          <small>現在のロゴ</small>
+        </div>
+        {% endif %}
+        <input type="file" name="logo" accept="image/*">
+      </div>
+      {% if company %}
+      <div class="form-group">
+        <label>ステータス</label>
+        <label class="toggle-label">
+          <input type="checkbox" name="is_active" {% if company.is_active %}checked{% endif %}>
+          <span class="toggle-text">有効</span>
+        </label>
+      </div>
+      {% endif %}
+    </div>
+    <div class="form-actions">
+      <a href="/admin/companies" class="btn btn-outline">キャンセル</a>
+      <button type="submit" class="btn btn-primary">
+        <i class="fas fa-save"></i> {{ '更新する' if company else '登録する' }}
+      </button>
+    </div>
+  </form>
+</div>
+{% endblock %}

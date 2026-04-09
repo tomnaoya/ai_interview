@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: ai-interview-system
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ADMIN_EMAIL
+        value: admin@example.com
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: DATA_DIR
+        value: /mnt/data
+    disk:
+      name: ai-interview-data
+      mountPath: /mnt/data
+      sizeGB: 10

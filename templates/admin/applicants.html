@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}応募者管理{% endblock %}
+{% block page_title %}応募者管理{% endblock %}
+
+{% block content %}
+<div class="toolbar">
+  <div class="toolbar-filters">
+    <form method="GET" action="/admin/applicants" class="filter-form">
+      <select name="company_id" onchange="this.form.submit()">
+        <option value="">全企業</option>
+        {% for c in companies %}
+        <option value="{{ c.id }}" {% if filter_company == c.id %}selected{% endif %}>{{ c.name }}</option>
+        {% endfor %}
+      </select>
+      <select name="status" onchange="this.form.submit()">
+        <option value="">全ステータス</option>
+        <option value="pending" {% if filter_status == 'pending' %}selected{% endif %}>選考中</option>
+        <option value="interview_scheduled" {% if filter_status == 'interview_scheduled' %}selected{% endif %}>面接予定</option>
+        <option value="interviewed" {% if filter_status == 'interviewed' %}selected{% endif %}>面接済</option>
+        <option value="passed" {% if filter_status == 'passed' %}selected{% endif %}>合格</option>
+        <option value="rejected" {% if filter_status == 'rejected' %}selected{% endif %}>不合格</option>
+      </select>
+    </form>
+  </div>
+  <a href="/admin/applicants/new" class="btn btn-primary"><i class="fas fa-plus"></i> 応募者を追加</a>
+</div>
+
+<div class="card">
+  <div class="table-wrapper">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>氏名</th>
+          <th>企業</th>
+          <th>応募職種</th>
+          <th>メール</th>
+          <th>ステータス</th>
+          <th>面接回数</th>
+          <th>登録日</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in applicants %}
+        <tr>
+          <td>
+            <strong>{{ a.name }}</strong>
+            {% if a.name_kana %}<br><small class="text-muted">{{ a.name_kana }}</small>{% endif %}
+          </td>
+          <td>{{ a.company.name }}</td>
+          <td>{{ a.job.title if a.job else '-' }}</td>
+          <td>{{ a.email }}</td>
+          <td>
+            {% if a.status == 'pending' %}<span class="badge badge-gray">選考中</span>
+            {% elif a.status == 'interview_scheduled' %}<span class="badge badge-blue">面接予定</span>
+            {% elif a.status == 'interviewed' %}<span class="badge badge-orange">面接済</span>
+            {% elif a.status == 'passed' %}<span class="badge badge-active">合格</span>
+            {% elif a.status == 'rejected' %}<span class="badge badge-fail">不合格</span>
+            {% else %}<span class="badge badge-gray">{{ a.status }}</span>
+            {% endif %}
+          </td>
+          <td>{{ a.interviews|length }}</td>
+          <td>{{ a.created_at.strftime('%Y/%m/%d') }}</td>
+          <td class="actions">
+            <a href="/admin/applicants/{{ a.id }}" class="btn btn-sm btn-outline"><i class="fas fa-eye"></i> 詳細</a>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="8" class="text-center text-muted">応募者データがありません</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

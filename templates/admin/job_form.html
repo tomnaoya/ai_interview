@@ -1,0 +1,405 @@
+{% extends "base.html" %}
+{% block title %}{{ '求人編集' if job else '求人追加' }}{% endblock %}
+{% block page_title %}求人情報設定{% endblock %}
+
+{% block content %}
+<div class="page-desc">求人情報を管理します</div>
+
+{% if job %}
+<div class="toolbar">
+  <a href="/admin/applicants/new?job_id={{ job.id }}" class="btn btn-outline"><i class="fas fa-link"></i> URL発行</a>
+  <a href="/admin/jobs" class="btn btn-outline"><i class="fas fa-arrow-left"></i> 戻る</a>
+  <button form="jobForm" type="submit" class="btn btn-primary" onclick="serializeData()"><i class="fas fa-save"></i> 保存</button>
+</div>
+{% endif %}
+
+<form method="POST" id="jobForm"
+  action="{{ '/admin/jobs/' ~ job.id ~ '/edit' if job else '/admin/jobs/new' }}">
+
+<!-- ▶ 求人情報 ──────────────────────────────────────────────────────────── -->
+<div class="section-block">
+  <div class="section-header"><i class="fas fa-chevron-right"></i> 求人情報</div>
+  <div class="card form-card">
+    <div class="form-grid">
+      <div class="form-group form-full">
+        <label>求人タイトル <span class="required">*</span></label>
+        <input type="text" name="title" value="{{ job.title if job else '' }}" required>
+      </div>
+      <div class="form-group form-full">
+        <label>問い合わせ先メールアドレス</label>
+        <div class="field-hint">※応募者様向けのメールに、問い合わせ先として記載されます。受け取り可能なメールアドレスをご記載ください。</div>
+        <div class="field-hint">※面接完了後、こちらのメールアドレスに通知が届きます。</div>
+        <input type="email" name="contact_email" value="{{ job.contact_email if job else '' }}">
+      </div>
+      <div class="form-group">
+        <label>有効期限</label>
+        <input type="datetime-local" name="expires_at"
+          value="{{ job.expires_at.strftime('%Y-%m-%dT%H:%M') if job and job.expires_at else '' }}">
+      </div>
+      <div class="form-group">
+        <label>受検言語</label>
+        <div class="radio-group">
+          {% for val, label in [('ja','日本語'),('en','英語'),('vi','ベトナム語')] %}
+          <label class="radio-label">
+            <input type="radio" name="interview_language" value="{{ val }}"
+              {% if (job and job.interview_language == val) or (not job and val == 'ja') %}checked{% endif %}>
+            {{ label }}
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="form-group">
+        <label>面接タイプ</label>
+        <div class="radio-group">
+          <label class="radio-label">
+            <input type="radio" name="interview_type" value="recorded"
+              {% if job and job.interview_type == 'recorded' %}checked{% endif %}> 録画面接
+          </label>
+          <label class="radio-label">
+            <input type="radio" name="interview_type" value="avatar"
+              {% if not job or job.interview_type == 'avatar' %}checked{% endif %}> アバター面接
+            <small class="text-muted">※最大質問数30問</small>
+          </label>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>アバター</label>
+        <div class="radio-group">
+          <label class="radio-label">
+            <input type="radio" name="avatar_gender" value="female"
+              {% if not job or job.avatar_gender == 'female' %}checked{% endif %}> 女性
+          </label>
+          <label class="radio-label">
+            <input type="radio" name="avatar_gender" value="male"
+              {% if job and job.avatar_gender == 'male' %}checked{% endif %}> 男性
+          </label>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>評価理由の表示</label>
+        <div class="radio-group">
+          <label class="radio-label">
+            <input type="radio" name="show_evaluation" value="1"
+              {% if not job or job.show_evaluation %}checked{% endif %}> する
+          </label>
+          <label class="radio-label">
+            <input type="radio" name="show_evaluation" value="0"
+              {% if job and not job.show_evaluation %}checked{% endif %}> しない
+          </label>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>受検者への面接内容の自動共有</label>
+        <div class="radio-group">
+          <label class="radio-label">
+            <input type="radio" name="share_result" value="1"
+              {% if job and job.share_result %}checked{% endif %}> する
+          </label>
+          <label class="radio-label">
+            <input type="radio" name="share_result" value="0"
+              {% if not job or not job.share_result %}checked{% endif %}> しない
+          </label>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>やり直し回数</label>
+        <input type="number" name="retry_count" min="0" max="10"
+          value="{{ job.retry_count if job else 0 }}" style="max-width:100px">
+      </div>
+      {% if job %}
+      <div class="form-group">
+        <label>ステータス</label>
+        <label class="toggle-label">
+          <input type="checkbox" name="is_active" {% if job.is_active %}checked{% endif %}>
+          <span class="toggle-text">有効</span>
+        </label>
+      </div>
+      {% endif %}
+      <div class="form-group form-full">
+        <label>所属企業 <span class="required">*</span></label>
+        <select name="company_id" required>
+          <option value="">選択してください</option>
+          {% for c in companies %}
+          <option value="{{ c.id }}" {% if job and job.company_id == c.id %}selected{% endif %}>{{ c.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ▶ 評価基準設定 ──────────────────────────────────────────────────────── -->
+<div class="section-block">
+  <div class="section-header"><i class="fas fa-chevron-right"></i> 評価基準設定</div>
+  <div class="card form-card">
+    <!-- 配点 -->
+    <div class="subsection-title">配点</div>
+    <div class="score-grid">
+      <div class="score-item">
+        <label>回答内容</label>
+        <input type="number" name="score_answer" id="scoreAnswer" min="0" max="100"
+          value="{{ job.score_answer if job else 70 }}" onchange="updateScoreTotal()">
+      </div>
+      <div class="score-item">
+        <label>話し方</label>
+        <input type="number" name="score_speaking" id="scoreSpeaking" min="0" max="100"
+          value="{{ job.score_speaking if job else 20 }}" onchange="updateScoreTotal()">
+      </div>
+      <div class="score-item">
+        <label>姿勢</label>
+        <input type="number" name="score_posture" id="scorePosture" min="0" max="100"
+          value="{{ job.score_posture if job else 10 }}" onchange="updateScoreTotal()">
+      </div>
+      <div class="score-item score-total-item">
+        <label>合計</label>
+        <div class="score-total" id="scoreTotal">100</div>
+      </div>
+      <button type="button" class="btn btn-outline btn-sm" onclick="resetScores()">リセット</button>
+    </div>
+
+    <!-- 加点キーワード -->
+    <div class="subsection-title mt-4">加点キーワード</div>
+    <div class="keyword-counter"><span id="kwCount">0</span>/20</div>
+    <div class="keyword-tags" id="keywordTags"></div>
+    <div class="keyword-input-row">
+      <input type="text" id="kwInput" placeholder="キーワードを入力してEnter" onkeydown="addKeyword(event)">
+    </div>
+    <input type="hidden" name="keywords_json" id="keywordsJson">
+
+    <!-- 参考評価基準 -->
+    <div class="subsection-title mt-4">参考評価基準</div>
+    <div class="field-hint">※合計得点で参考評価をS～Dで表示いたします。 ※得点の範囲を編集でき、編集後は同じ求人の参考評価も全て書き換わります。</div>
+    <div class="grade-grid" id="gradeGrid"></div>
+    <input type="hidden" name="grade_criteria_json" id="gradeCriteriaJson">
+
+    <!-- 評価プロンプト -->
+    <div class="subsection-title mt-4">評価プロンプト編集</div>
+    <div class="field-hint">※回答内容の評価プロンプトの編集ができます。 ※入力がない場合、共通プロンプトで評価を出力します。</div>
+    <div class="form-group">
+      <label>AIの役割</label>
+      <div class="ai-role-row">
+        <span>あなたは</span>
+        <input type="text" name="ai_role" value="{{ job.ai_role if job else '' }}" placeholder="採用面接官" style="flex:1">
+        <span>です。</span>
+      </div>
+    </div>
+    <div class="form-group mt-2">
+      <label>評価基準</label>
+      <textarea name="ai_evaluation_prompt" rows="4">{{ job.ai_evaluation_prompt if job else '' }}</textarea>
+    </div>
+  </div>
+</div>
+
+<!-- ▶ 面接画面設定 ──────────────────────────────────────────────────────── -->
+<div class="section-block">
+  <div class="section-header"><i class="fas fa-chevron-right"></i> 面接画面設定</div>
+  <div class="card form-card">
+    <div class="lang-tabs">
+      <button type="button" class="lang-tab active" data-lang="ja">JP</button>
+      <button type="button" class="lang-tab" data-lang="en">EN</button>
+      <button type="button" class="lang-tab" data-lang="vi">VI</button>
+    </div>
+    {% for lang, label in [('ja','日本語'),('en','英語'),('vi','ベトナム語')] %}
+    <div class="lang-content {% if lang == 'ja' %}active{% endif %}" id="lang-{{ lang }}">
+      <div class="subsection-title">「面接」編集 - {{ label }}</div>
+      <div class="form-group">
+        <label>面接タイトル</label>
+        <input type="text" name="interview_title_{{ lang }}"
+          value="{{ job['interview_title_' ~ lang] if job else '' }}">
+      </div>
+      <div class="subsection-title mt-2">面接データ送信完了画面編集 - {{ label }}</div>
+      <div class="form-group">
+        <label>タイトル</label>
+        <input type="text" name="complete_title_{{ lang }}"
+          value="{{ job['complete_title_' ~ lang] if job else '' }}">
+      </div>
+      <div class="form-group">
+        <label>本文</label>
+        <textarea name="complete_body_{{ lang }}" rows="4">{{ job['complete_body_' ~ lang] if job else '' }}</textarea>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- ▶ 質問設定 ──────────────────────────────────────────────────────────── -->
+<div class="section-block">
+  <div class="section-header"><i class="fas fa-chevron-right"></i> 質問設定</div>
+  <div class="card form-card">
+    <div class="question-meta">
+      回答制限時間合計 <span id="totalTime">0</span>秒 / <span id="maxTime">2100</span>秒
+    </div>
+    <div class="subsection-title">質問設定　（編集できる）</div>
+    <div id="questionsContainer"></div>
+    <button type="button" class="btn btn-outline mt-2" onclick="addQuestion()">
+      <i class="fas fa-plus"></i> 質問を追加
+    </button>
+    <input type="hidden" name="ai_questions_json" id="questionsJson">
+  </div>
+</div>
+
+<div class="form-actions sticky-actions">
+  <a href="/admin/jobs" class="btn btn-outline"><i class="fas fa-arrow-left"></i> 戻る</a>
+  <button type="submit" class="btn btn-primary" onclick="serializeData()">
+    <i class="fas fa-save"></i> 保存
+  </button>
+</div>
+
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ── Initial data ───────────────────────────────────────────────────────────
+let questions = {{ (job.ai_questions | tojson) if job and job.ai_questions else '[]' }};
+let keywords  = {{ (job.keywords | tojson) if job and job.keywords else '[]' }};
+let gradeCriteria = {{ (job.grade_criteria | tojson) if job and job.grade_criteria else '[{"grade":"S","min":100},{"grade":"A","min":80},{"grade":"B","min":60},{"grade":"C","min":40},{"grade":"D","min":0}]' }};
+
+const MAX_TIME = 2100;
+
+// ── Score total ─────────────────────────────────────────────────────────────
+function updateScoreTotal() {
+  const a = parseInt(document.getElementById('scoreAnswer').value) || 0;
+  const s = parseInt(document.getElementById('scoreSpeaking').value) || 0;
+  const p = parseInt(document.getElementById('scorePosture').value) || 0;
+  const total = a + s + p;
+  const el = document.getElementById('scoreTotal');
+  el.textContent = total;
+  el.className = 'score-total' + (total !== 100 ? ' score-warn' : '');
+}
+function resetScores() {
+  document.getElementById('scoreAnswer').value = 70;
+  document.getElementById('scoreSpeaking').value = 20;
+  document.getElementById('scorePosture').value = 10;
+  updateScoreTotal();
+}
+
+// ── Keywords ────────────────────────────────────────────────────────────────
+function renderKeywords() {
+  const container = document.getElementById('keywordTags');
+  document.getElementById('kwCount').textContent = keywords.length;
+  container.innerHTML = keywords.map((kw, i) => `
+    <span class="kw-tag">${kw}<button type="button" onclick="removeKeyword(${i})">×</button></span>
+  `).join('');
+  document.getElementById('keywordsJson').value = JSON.stringify(keywords);
+}
+function addKeyword(e) {
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  const val = document.getElementById('kwInput').value.trim();
+  if (val && keywords.length < 20 && !keywords.includes(val)) {
+    keywords.push(val);
+    renderKeywords();
+  }
+  document.getElementById('kwInput').value = '';
+}
+function removeKeyword(i) {
+  keywords.splice(i, 1);
+  renderKeywords();
+}
+
+// ── Grade criteria ──────────────────────────────────────────────────────────
+function renderGrade() {
+  const grid = document.getElementById('gradeGrid');
+  grid.innerHTML = gradeCriteria.map((g, i) => `
+    <div class="grade-row">
+      <span class="grade-label">${g.grade}</span>
+      <span>～</span>
+      <input type="number" class="grade-min" value="${g.min}" min="0" max="100"
+        onchange="gradeCriteria[${i}].min = parseInt(this.value)||0; syncGradeCriteria()">
+    </div>
+  `).join('');
+  document.getElementById('gradeCriteriaJson').value = JSON.stringify(gradeCriteria);
+}
+function syncGradeCriteria() {
+  document.getElementById('gradeCriteriaJson').value = JSON.stringify(gradeCriteria);
+}
+
+// ── Questions ───────────────────────────────────────────────────────────────
+function updateTotalTime() {
+  const total = questions.reduce((s, q) => s + (parseInt(q.time_limit) || 0), 0);
+  document.getElementById('totalTime').textContent = total;
+  document.getElementById('totalTime').style.color = total > MAX_TIME ? '#ef4444' : '';
+}
+
+function renderQuestions() {
+  const container = document.getElementById('questionsContainer');
+  if (questions.length === 0) {
+    container.innerHTML = '<p class="text-muted text-center" style="padding:16px">質問がありません</p>';
+    updateTotalTime();
+    return;
+  }
+  container.innerHTML = questions.map((q, i) => `
+    <div class="q-card" data-index="${i}">
+      <div class="q-header">
+        <span class="q-num">Q${i + 1}</span>
+        <div class="q-actions">
+          <button type="button" class="btn btn-sm btn-outline" onclick="moveQ(${i}, -1)" ${i===0?'disabled':''}>↑</button>
+          <button type="button" class="btn btn-sm btn-outline" onclick="moveQ(${i}, 1)" ${i===questions.length-1?'disabled':''}>↓</button>
+          <button type="button" class="btn btn-sm btn-danger" onclick="removeQ(${i})"><i class="fas fa-trash"></i></button>
+        </div>
+      </div>
+      <div class="q-body">
+        <div class="form-group">
+          <label>質問文（日本語）</label>
+          <textarea rows="2" onchange="questions[${i}].question_ja=this.value">${q.question_ja || q.question || ''}</textarea>
+        </div>
+        <div class="form-group">
+          <label>質問文（English）</label>
+          <textarea rows="2" onchange="questions[${i}].question_en=this.value">${q.question_en || ''}</textarea>
+        </div>
+        <div class="form-group">
+          <label>質問文（Tiếng Việt）</label>
+          <textarea rows="2" onchange="questions[${i}].question_vi=this.value">${q.question_vi || ''}</textarea>
+        </div>
+        <div class="form-group" style="max-width:180px">
+          <label>回答制限時間（秒）</label>
+          <input type="number" min="10" max="600" value="${q.time_limit || 120}"
+            onchange="questions[${i}].time_limit=parseInt(this.value)||120; updateTotalTime()">
+        </div>
+      </div>
+    </div>
+  `).join('');
+  updateTotalTime();
+}
+
+function addQuestion() {
+  if (questions.length >= 30) { alert('最大30問まで設定できます'); return; }
+  questions.push({ id: Date.now(), question_ja: '', question_en: '', question_vi: '', time_limit: 120 });
+  renderQuestions();
+}
+function removeQ(i) {
+  questions.splice(i, 1);
+  renderQuestions();
+}
+function moveQ(i, dir) {
+  const j = i + dir;
+  if (j < 0 || j >= questions.length) return;
+  [questions[i], questions[j]] = [questions[j], questions[i]];
+  renderQuestions();
+}
+
+// ── Language tabs ───────────────────────────────────────────────────────────
+document.querySelectorAll('.lang-tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.lang-tab').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.lang-content').forEach(c => c.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('lang-' + btn.dataset.lang).classList.add('active');
+  });
+});
+
+// ── Serialize before submit ──────────────────────────────────────────────────
+function serializeData() {
+  document.getElementById('questionsJson').value = JSON.stringify(questions);
+  document.getElementById('keywordsJson').value = JSON.stringify(keywords);
+  document.getElementById('gradeCriteriaJson').value = JSON.stringify(gradeCriteria);
+}
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+updateScoreTotal();
+renderKeywords();
+renderGrade();
+renderQuestions();
+</script>
+{% endblock %}

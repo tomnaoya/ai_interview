@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}{{ 'ポリシー編集' if policy else 'ポリシー新規作成' }}{% endblock %}
+{% block page_title %}プライバシーポリシー{{ '編集' if policy else '新規作成' }}{% endblock %}
+
+{% block content %}
+<div class="card form-card">
+  <form method="POST" action="{{ '/admin/privacy/' ~ policy.id ~ '/edit' if policy else '/admin/privacy/new' }}">
+    <div class="form-grid">
+      <div class="form-group">
+        <label>タイトル <span class="required">*</span></label>
+        <input type="text" name="title" value="{{ policy.title if policy else 'プライバシーポリシー' }}" required>
+      </div>
+      <div class="form-group">
+        <label>バージョン</label>
+        <input type="text" name="version" value="{{ policy.version if policy else '1.0' }}" placeholder="1.0">
+      </div>
+      <div class="form-group form-full">
+        <label>対象企業（未選択=全企業共通）</label>
+        <select name="company_id">
+          <option value="">全企業共通</option>
+          {% for c in companies %}
+          <option value="{{ c.id }}" {% if policy and policy.company_id == c.id %}selected{% endif %}>{{ c.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% if policy %}
+      <div class="form-group">
+        <label>ステータス</label>
+        <label class="toggle-label">
+          <input type="checkbox" name="is_active" {% if policy.is_active %}checked{% endif %}>
+          <span class="toggle-text">有効</span>
+        </label>
+      </div>
+      {% endif %}
+      <div class="form-group form-full">
+        <label>ポリシー内容（Markdown形式）</label>
+        <textarea name="content" rows="25" id="policyContent">{{ policy.content if policy else default_content }}</textarea>
+      </div>
+    </div>
+    <div class="form-actions">
+      <a href="/admin/privacy" class="btn btn-outline">キャンセル</a>
+      <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> {{ '更新する' if policy else '登録する' }}</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}面接履歴管理{% endblock %}
+{% block page_title %}面接履歴管理{% endblock %}
+
+{% block content %}
+<div class="toolbar">
+  <form method="GET" action="/admin/interview-history" class="filter-form">
+    <select name="company_id" onchange="this.form.submit()">
+      <option value="">全企業</option>
+      {% for c in companies %}
+      <option value="{{ c.id }}" {% if filter_company == c.id %}selected{% endif %}>{{ c.name }}</option>
+      {% endfor %}
+    </select>
+    <select name="status" onchange="this.form.submit()">
+      <option value="">全ステータス</option>
+      <option value="waiting" {% if filter_status == 'waiting' %}selected{% endif %}>待機中</option>
+      <option value="in_progress" {% if filter_status == 'in_progress' %}selected{% endif %}>実施中</option>
+      <option value="completed" {% if filter_status == 'completed' %}selected{% endif %}>完了</option>
+    </select>
+  </form>
+</div>
+
+<div class="card">
+  <div class="table-wrapper">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>応募者</th>
+          <th>企業</th>
+          <th>求人</th>
+          <th>ステータス</th>
+          <th>スコア</th>
+          <th>AI推薦</th>
+          <th>開始日時</th>
+          <th>完了日時</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for iv in interviews %}
+        <tr>
+          <td><strong>{{ iv.applicant.name }}</strong></td>
+          <td>{{ iv.applicant.company.name }}</td>
+          <td>{{ iv.job.title }}</td>
+          <td>
+            {% if iv.status == 'waiting' %}<span class="badge badge-gray">待機中</span>
+            {% elif iv.status == 'in_progress' %}<span class="badge badge-blue">実施中</span>
+            {% elif iv.status == 'completed' %}<span class="badge badge-active">完了</span>
+            {% elif iv.status == 'expired' %}<span class="badge badge-inactive">期限切れ</span>
+            {% endif %}
+          </td>
+          <td>{% if iv.total_score %}<strong>{{ "%.0f"|format(iv.total_score) }}点</strong>{% else %}-{% endif %}</td>
+          <td>
+            {% if iv.ai_recommendation == 'pass' %}<span class="badge badge-pass">採用推薦</span>
+            {% elif iv.ai_recommendation == 'fail' %}<span class="badge badge-fail">不採用</span>
+            {% elif iv.ai_recommendation == 'review' %}<span class="badge badge-review">要検討</span>
+            {% else %}-{% endif %}
+          </td>
+          <td>{{ iv.started_at.strftime('%Y/%m/%d %H:%M') if iv.started_at else '-' }}</td>
+          <td>{{ iv.completed_at.strftime('%Y/%m/%d %H:%M') if iv.completed_at else '-' }}</td>
+          <td>
+            <a href="/admin/interview-history/{{ iv.id }}" class="btn btn-sm btn-outline">
+              <i class="fas fa-eye"></i> 詳細
+            </a>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="9" class="text-center text-muted">面接データがありません</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

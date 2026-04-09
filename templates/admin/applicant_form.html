@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}応募者追加{% endblock %}
+{% block page_title %}応募者追加{% endblock %}
+
+{% block content %}
+<div class="card form-card">
+  <form method="POST" action="/admin/applicants/new" enctype="multipart/form-data">
+    <div class="form-grid">
+      <div class="form-group form-full">
+        <label>所属企業 <span class="required">*</span></label>
+        <select name="company_id" required id="companySelect" onchange="filterJobs()">
+          <option value="">選択してください</option>
+          {% for c in companies %}
+          <option value="{{ c.id }}">{{ c.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group form-full">
+        <label>応募求人</label>
+        <select name="job_id" id="jobSelect">
+          <option value="">選択してください（任意）</option>
+          {% for j in jobs %}
+          <option value="{{ j.id }}" data-company="{{ j.company_id }}">{{ j.company.name }} - {{ j.title }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>氏名 <span class="required">*</span></label>
+        <input type="text" name="name" required placeholder="山田 太郎">
+      </div>
+      <div class="form-group">
+        <label>氏名（カナ）</label>
+        <input type="text" name="name_kana" placeholder="ヤマダ タロウ">
+      </div>
+      <div class="form-group">
+        <label>メールアドレス <span class="required">*</span></label>
+        <input type="email" name="email" required placeholder="taro@example.com">
+      </div>
+      <div class="form-group">
+        <label>電話番号</label>
+        <input type="tel" name="phone" placeholder="090-0000-0000">
+      </div>
+      <div class="form-group">
+        <label>生年月日</label>
+        <input type="date" name="birth_date">
+      </div>
+      <div class="form-group">
+        <label>住所</label>
+        <input type="text" name="address" placeholder="東京都渋谷区...">
+      </div>
+      <div class="form-group form-full">
+        <label>学歴</label>
+        <textarea name="education" rows="3" placeholder="最終学歴を記入..."></textarea>
+      </div>
+      <div class="form-group form-full">
+        <label>職務経歴</label>
+        <textarea name="work_experience" rows="5" placeholder="これまでの職務経歴を記入..."></textarea>
+      </div>
+      <div class="form-group form-full">
+        <label>備考</label>
+        <textarea name="notes" rows="3"></textarea>
+      </div>
+      <div class="form-group">
+        <label>履歴書ファイル</label>
+        <input type="file" name="resume" accept=".pdf,.doc,.docx">
+      </div>
+    </div>
+    <div class="form-actions">
+      <a href="/admin/applicants" class="btn btn-outline">キャンセル</a>
+      <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> 登録する</button>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function filterJobs() {
+  const companyId = document.getElementById('companySelect').value;
+  const opts = document.querySelectorAll('#jobSelect option');
+  opts.forEach(o => {
+    if (!o.value) return;
+    o.style.display = (!companyId || o.dataset.company === companyId) ? '' : 'none';
+  });
+}
+</script>
+{% endblock %}

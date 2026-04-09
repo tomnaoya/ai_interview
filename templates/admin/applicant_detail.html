@@ -1,0 +1,243 @@
+{% extends "base.html" %}
+{% block title %}{{ applicant.name }} - 応募者詳細{% endblock %}
+{% block page_title %}応募者詳細{% endblock %}
+
+{% block content %}
+<div class="detail-layout">
+  <!-- Left: Applicant Info -->
+  <div class="detail-main">
+    <div class="card">
+      <div class="card-header">
+        <h3><i class="fas fa-user-tie"></i> 基本情報</h3>
+        <a href="#" onclick="showEditForm()" class="btn btn-sm btn-outline"><i class="fas fa-edit"></i> 編集</a>
+      </div>
+      <div class="detail-grid">
+        <div class="detail-item">
+          <label>氏名</label>
+          <p>{{ applicant.name }} {% if applicant.name_kana %}<small>（{{ applicant.name_kana }}）</small>{% endif %}</p>
+        </div>
+        <div class="detail-item">
+          <label>企業</label>
+          <p>{{ applicant.company.name }}</p>
+        </div>
+        <div class="detail-item">
+          <label>応募職種</label>
+          <p>{{ applicant.job.title if applicant.job else '未設定' }}</p>
+        </div>
+        <div class="detail-item">
+          <label>メールアドレス</label>
+          <p>{{ applicant.email }}</p>
+        </div>
+        <div class="detail-item">
+          <label>電話番号</label>
+          <p>{{ applicant.phone or '-' }}</p>
+        </div>
+        <div class="detail-item">
+          <label>生年月日</label>
+          <p>{{ applicant.birth_date or '-' }}</p>
+        </div>
+        <div class="detail-item">
+          <label>ステータス</label>
+          <p>
+            {% if applicant.status == 'pending' %}<span class="badge badge-gray">選考中</span>
+            {% elif applicant.status == 'interview_scheduled' %}<span class="badge badge-blue">面接予定</span>
+            {% elif applicant.status == 'interviewed' %}<span class="badge badge-orange">面接済</span>
+            {% elif applicant.status == 'passed' %}<span class="badge badge-active">合格</span>
+            {% elif applicant.status == 'rejected' %}<span class="badge badge-fail">不合格</span>
+            {% endif %}
+          </p>
+        </div>
+        <div class="detail-item">
+          <label>登録日</label>
+          <p>{{ applicant.created_at.strftime('%Y年%m月%d日') }}</p>
+        </div>
+        {% if applicant.address %}
+        <div class="detail-item detail-full">
+          <label>住所</label>
+          <p>{{ applicant.address }}</p>
+        </div>
+        {% endif %}
+        {% if applicant.education %}
+        <div class="detail-item detail-full">
+          <label>学歴</label>
+          <p class="pre-wrap">{{ applicant.education }}</p>
+        </div>
+        {% endif %}
+        {% if applicant.work_experience %}
+        <div class="detail-item detail-full">
+          <label>職務経歴</label>
+          <p class="pre-wrap">{{ applicant.work_experience }}</p>
+        </div>
+        {% endif %}
+        {% if applicant.notes %}
+        <div class="detail-item detail-full">
+          <label>備考</label>
+          <p class="pre-wrap">{{ applicant.notes }}</p>
+        </div>
+        {% endif %}
+        {% if applicant.resume_path %}
+        <div class="detail-item detail-full">
+          <label>履歴書</label>
+          <a href="{{ applicant.resume_path }}" target="_blank" class="btn btn-sm btn-outline">
+            <i class="fas fa-file-download"></i> 履歴書をダウンロード
+          </a>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Interview History -->
+    <div class="card mt-4">
+      <div class="card-header">
+        <h3><i class="fas fa-comments"></i> 面接履歴</h3>
+      </div>
+      {% for iv in interviews %}
+      <div class="interview-history-item">
+        <div class="interview-history-header">
+          <span class="interview-date">{{ iv.created_at.strftime('%Y/%m/%d %H:%M') }}</span>
+          <span class="badge badge-{{ iv.status }}">{{ iv.status }}</span>
+          {% if iv.total_score %}
+          <span class="score-badge">{{ "%.0f"|format(iv.total_score) }}点</span>
+          {% endif %}
+          {% if iv.ai_recommendation == 'pass' %}<span class="badge badge-pass">採用推薦</span>
+          {% elif iv.ai_recommendation == 'fail' %}<span class="badge badge-fail">不採用</span>
+          {% elif iv.ai_recommendation == 'review' %}<span class="badge badge-review">要検討</span>
+          {% endif %}
+        </div>
+        <div class="interview-history-body">
+          <p><strong>求人:</strong> {{ iv.job.title }}</p>
+          {% if iv.evaluation_summary %}
+          <p class="evaluation-summary">{{ iv.evaluation_summary }}</p>
+          {% endif %}
+          <a href="/admin/interview-history/{{ iv.id }}" class="btn btn-sm btn-outline">詳細を見る</a>
+        </div>
+      </div>
+      {% else %}
+      <div class="empty-state"><i class="fas fa-comments"></i><p>面接記録がありません</p></div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Right: Actions -->
+  <div class="detail-sidebar">
+    <div class="card">
+      <div class="card-header"><h3><i class="fas fa-link"></i> AI面接リンク発行</h3></div>
+      <div class="card-body">
+        <p class="text-sm text-muted">面接を実施する求人を選択して、リンクを発行してください。</p>
+        <div class="form-group">
+          <label>求人選択</label>
+          <select id="jobSelect">
+            <option value="">選択してください</option>
+            {% for j in jobs %}
+            <option value="{{ j.id }}">{{ j.title }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <button class="btn btn-primary btn-full" onclick="generateLink()">
+          <i class="fas fa-link"></i> 面接リンクを発行
+        </button>
+        <div id="linkResult" style="display:none" class="link-result">
+          <label>面接URL</label>
+          <div class="link-box">
+            <input type="text" id="interviewLink" readonly>
+            <button class="btn btn-sm btn-outline" onclick="copyLink()"><i class="fas fa-copy"></i></button>
+          </div>
+          <p class="text-sm text-muted mt-1">このURLを応募者にメールなどで送付してください。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Form Modal -->
+<div id="editModal" class="modal" style="display:none">
+  <div class="modal-overlay" onclick="hideEditForm()"></div>
+  <div class="modal-content large">
+    <div class="modal-header">
+      <h3>応募者情報編集</h3>
+      <button onclick="hideEditForm()" class="modal-close"><i class="fas fa-times"></i></button>
+    </div>
+    <form method="POST" action="/admin/applicants/{{ applicant.id }}/edit" enctype="multipart/form-data">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>氏名</label>
+          <input type="text" name="name" value="{{ applicant.name }}" required>
+        </div>
+        <div class="form-group">
+          <label>氏名（カナ）</label>
+          <input type="text" name="name_kana" value="{{ applicant.name_kana or '' }}">
+        </div>
+        <div class="form-group">
+          <label>企業</label>
+          <input type="hidden" name="company_id" value="{{ applicant.company_id }}">
+          <input type="text" value="{{ applicant.company.name }}" disabled>
+        </div>
+        <div class="form-group">
+          <label>ステータス</label>
+          <select name="status">
+            <option value="pending" {% if applicant.status == 'pending' %}selected{% endif %}>選考中</option>
+            <option value="interview_scheduled" {% if applicant.status == 'interview_scheduled' %}selected{% endif %}>面接予定</option>
+            <option value="interviewed" {% if applicant.status == 'interviewed' %}selected{% endif %}>面接済</option>
+            <option value="passed" {% if applicant.status == 'passed' %}selected{% endif %}>合格</option>
+            <option value="rejected" {% if applicant.status == 'rejected' %}selected{% endif %}>不合格</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>メール</label>
+          <input type="email" name="email" value="{{ applicant.email }}" required>
+        </div>
+        <div class="form-group">
+          <label>電話</label>
+          <input type="tel" name="phone" value="{{ applicant.phone or '' }}">
+        </div>
+        <div class="form-group form-full">
+          <label>学歴</label>
+          <textarea name="education" rows="3">{{ applicant.education or '' }}</textarea>
+        </div>
+        <div class="form-group form-full">
+          <label>職務経歴</label>
+          <textarea name="work_experience" rows="4">{{ applicant.work_experience or '' }}</textarea>
+        </div>
+        <div class="form-group form-full">
+          <label>備考</label>
+          <textarea name="notes" rows="3">{{ applicant.notes or '' }}</textarea>
+        </div>
+        <div class="form-group form-full">
+          <label>履歴書ファイル</label>
+          <input type="file" name="resume">
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-outline" onclick="hideEditForm()">キャンセル</button>
+        <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> 更新</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function showEditForm() { document.getElementById('editModal').style.display = 'flex'; }
+function hideEditForm() { document.getElementById('editModal').style.display = 'none'; }
+
+async function generateLink() {
+  const jobId = document.getElementById('jobSelect').value;
+  if (!jobId) { alert('求人を選択してください'); return; }
+  const res = await fetch('/admin/applicants/{{ applicant.id }}/interview-link', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: `job_id=${jobId}`
+  });
+  const data = await res.json();
+  document.getElementById('interviewLink').value = data.link;
+  document.getElementById('linkResult').style.display = 'block';
+}
+
+function copyLink() {
+  const input = document.getElementById('interviewLink');
+  input.select();
+  navigator.clipboard.writeText(input.value).then(() => alert('URLをコピーしました'));
+}
+</script>
+{% endblock %}
