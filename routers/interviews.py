@@ -1,13 +1,21 @@
 from fastapi import APIRouter, Request, Depends, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from database import get_db
 from auth import get_current_admin
 import models
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
+
+
+def _load_interview(db: Session, interview_id: int):
+    return db.query(models.Interview).options(
+        joinedload(models.Interview.applicant).joinedload(models.Applicant.company),
+        joinedload(models.Interview.job).joinedload(models.Job.company),
+        joinedload(models.Interview.messages),
+    ).filter(models.Interview.id == interview_id).first()
 
 
 @router.get("/interview-history", response_class=HTMLResponse)
@@ -18,7 +26,10 @@ async def list_interviews(
     db: Session = Depends(get_db),
     admin=Depends(get_current_admin),
 ):
-    query = db.query(models.Interview)
+    query = db.query(models.Interview).options(
+        joinedload(models.Interview.applicant).joinedload(models.Applicant.company),
+        joinedload(models.Interview.job),
+    )
     if company_id:
         query = query.join(models.Applicant).filter(models.Applicant.company_id == company_id)
     if status:
@@ -37,9 +48,9 @@ async def view_interview(
     interview_id: int, request: Request,
     db: Session = Depends(get_db), admin=Depends(get_current_admin)
 ):
-    interview = db.query(models.Interview).get(interview_id)
+    interview = _load_interview(db, interview_id)
     if not interview:
-        raise HTTPException(404)
+        raise HTTPException(404, "面接データが見つかりません")
     return templates.TemplateResponse("admin/interview_detail.html", {
         "request": request, "admin": admin, "interview": interview,
         "active_page": "interviews"
@@ -52,10 +63,10 @@ async def export_interview(
     db: Session = Depends(get_db),
     admin=Depends(get_current_admin),
 ):
-    interview = db.query(models.Interview).get(interview_id)
+    interview = _load_interview(db, interview_id)
     if not interview:
         raise HTTPException(404)
-    data = {
+    return JSONResponse({
         "interview_id": interview.id,
         "applicant": interview.applicant.name,
         "job": interview.job.title,
@@ -69,5 +80,4 @@ async def export_interview(
             {"role": m.role, "content": m.content, "time": m.created_at.isoformat()}
             for m in interview.messages
         ],
-    }
-    return JSONResponse(data)
+    })

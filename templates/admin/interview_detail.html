@@ -5,12 +5,14 @@
 {% block content %}
 <div class="detail-layout">
   <div class="detail-main">
-    <!-- Evaluation Summary -->
+
+    <!-- 評価サマリー -->
     {% if interview.status == 'completed' %}
+    {% set score = (interview.total_score or 0)|int %}
     <div class="card evaluation-card">
       <div class="evaluation-header">
-        <div class="score-circle {% if interview.total_score >= 80 %}score-high{% elif interview.total_score >= 60 %}score-mid{% else %}score-low{% endif %}">
-          <span class="score-number">{{ "%.0f"|format(interview.total_score or 0) }}</span>
+        <div class="score-circle {% if score >= 80 %}score-high{% elif score >= 60 %}score-mid{% else %}score-low{% endif %}">
+          <span class="score-number">{{ score }}</span>
           <span class="score-label">点</span>
         </div>
         <div class="evaluation-meta">
@@ -20,46 +22,52 @@
             <span class="recommend-pass"><i class="fas fa-check-circle"></i> 採用推薦</span>
             {% elif interview.ai_recommendation == 'fail' %}
             <span class="recommend-fail"><i class="fas fa-times-circle"></i> 不採用推薦</span>
-            {% else %}
+            {% elif interview.ai_recommendation == 'review' %}
             <span class="recommend-review"><i class="fas fa-question-circle"></i> 要検討</span>
+            {% else %}
+            <span class="recommend-review"><i class="fas fa-minus-circle"></i> 未評価</span>
             {% endif %}
           </div>
+          {% if interview.evaluation_summary %}
           <p class="evaluation-summary-text">{{ interview.evaluation_summary }}</p>
+          {% endif %}
         </div>
       </div>
 
       {% if interview.evaluation_details %}
-      {% set details = interview.evaluation_details %}
-      {% if details.details %}
+      {% set det = interview.evaluation_details %}
+
+      {% if det.details %}
       <div class="criteria-scores">
-        {% for d in details.details %}
+        {% for d in det.details %}
+        {% set ds = (d.score or 0)|int %}
         <div class="criteria-score-item">
           <div class="criteria-score-header">
             <span>{{ d.criterion }}</span>
-            <span class="score-value">{{ d.score }}点 ({{ d.weight }}%)</span>
+            <span class="score-value">{{ ds }}点{% if d.weight %} ({{ d.weight }}%){% endif %}</span>
           </div>
           <div class="progress-bar">
-            <div class="progress-fill {% if d.score >= 80 %}fill-high{% elif d.score >= 60 %}fill-mid{% else %}fill-low{% endif %}"
-              style="width: {{ d.score }}%"></div>
+            <div class="progress-fill {% if ds >= 80 %}fill-high{% elif ds >= 60 %}fill-mid{% else %}fill-low{% endif %}"
+              style="width:{{ ds }}%"></div>
           </div>
-          <p class="criteria-comment">{{ d.comment }}</p>
+          {% if d.comment %}<p class="criteria-comment">{{ d.comment }}</p>{% endif %}
         </div>
         {% endfor %}
       </div>
       {% endif %}
 
-      {% if details.strengths or details.concerns %}
+      {% if det.strengths or det.concerns %}
       <div class="strengths-concerns">
-        {% if details.strengths %}
+        {% if det.strengths %}
         <div class="strengths">
           <h4><i class="fas fa-thumbs-up text-success"></i> 強み</h4>
-          <ul>{% for s in details.strengths %}<li>{{ s }}</li>{% endfor %}</ul>
+          <ul>{% for s in det.strengths %}<li>{{ s }}</li>{% endfor %}</ul>
         </div>
         {% endif %}
-        {% if details.concerns %}
+        {% if det.concerns %}
         <div class="concerns">
           <h4><i class="fas fa-exclamation-triangle text-warning"></i> 懸念点</h4>
-          <ul>{% for c in details.concerns %}<li>{{ c }}</li>{% endfor %}</ul>
+          <ul>{% for c in det.concerns %}<li>{{ c }}</li>{% endfor %}</ul>
         </div>
         {% endif %}
       </div>
@@ -68,11 +76,12 @@
     </div>
     {% endif %}
 
-    <!-- Conversation Log -->
+    <!-- 会話ログ -->
     <div class="card mt-4">
       <div class="card-header">
         <h3><i class="fas fa-comments"></i> 面接会話記録</h3>
-        <a href="/admin/interview-history/{{ interview.id }}/export" class="btn btn-sm btn-outline" target="_blank">
+        <a href="/admin/interview-history/{{ interview.id }}/export"
+          class="btn btn-sm btn-outline" target="_blank">
           <i class="fas fa-download"></i> JSON出力
         </a>
       </div>
@@ -80,18 +89,16 @@
         {% for msg in interview.messages %}
         <div class="message-row {% if msg.role == 'user' %}msg-user{% else %}msg-ai{% endif %}">
           <div class="message-avatar">
-            {% if msg.role == 'user' %}
-            <i class="fas fa-user"></i>
-            {% else %}
-            <i class="fas fa-robot"></i>
-            {% endif %}
+            <i class="fas fa-{% if msg.role == 'user' %}user{% else %}robot{% endif %}"></i>
           </div>
           <div class="message-bubble">
             <div class="message-meta">
               <span class="message-sender">{{ '応募者' if msg.role == 'user' else 'AI面接官' }}</span>
               <span class="message-time">{{ msg.created_at.strftime('%H:%M') }}</span>
             </div>
-            <div class="message-text">{{ msg.content.replace('[INTERVIEW_COMPLETE]', '') }}</div>
+            <div class="message-text">
+              {{ msg.content.replace('[INTERVIEW_COMPLETE]', '') }}
+            </div>
           </div>
         </div>
         {% else %}
@@ -101,24 +108,32 @@
     </div>
   </div>
 
-  <!-- Right Sidebar -->
+  <!-- サイドバー -->
   <div class="detail-sidebar">
     <div class="card">
       <div class="card-header"><h3>面接情報</h3></div>
       <div class="card-body">
         <dl class="info-list">
-          <dt>応募者</dt><dd><a href="/admin/applicants/{{ interview.applicant_id }}">{{ interview.applicant.name }}</a></dd>
-          <dt>企業</dt><dd>{{ interview.applicant.company.name }}</dd>
-          <dt>求人</dt><dd>{{ interview.job.title }}</dd>
-          <dt>ステータス</dt><dd>
+          <dt>応募者</dt>
+          <dd><a href="/admin/applicants/{{ interview.applicant_id }}">{{ interview.applicant.name }}</a></dd>
+          <dt>企業</dt>
+          <dd>{{ interview.applicant.company.name }}</dd>
+          <dt>求人</dt>
+          <dd>{{ interview.job.title }}</dd>
+          <dt>ステータス</dt>
+          <dd>
             {% if interview.status == 'waiting' %}<span class="badge badge-gray">待機中</span>
             {% elif interview.status == 'in_progress' %}<span class="badge badge-blue">実施中</span>
             {% elif interview.status == 'completed' %}<span class="badge badge-active">完了</span>
+            {% else %}<span class="badge badge-inactive">{{ interview.status }}</span>
             {% endif %}
           </dd>
-          <dt>開始日時</dt><dd>{{ interview.started_at.strftime('%Y/%m/%d %H:%M') if interview.started_at else '-' }}</dd>
-          <dt>完了日時</dt><dd>{{ interview.completed_at.strftime('%Y/%m/%d %H:%M') if interview.completed_at else '-' }}</dd>
-          <dt>発言数</dt><dd>{{ interview.messages|length }} ターン</dd>
+          <dt>開始日時</dt>
+          <dd>{{ interview.started_at.strftime('%Y/%m/%d %H:%M') if interview.started_at else '-' }}</dd>
+          <dt>完了日時</dt>
+          <dd>{{ interview.completed_at.strftime('%Y/%m/%d %H:%M') if interview.completed_at else '-' }}</dd>
+          <dt>発言数</dt>
+          <dd>{{ interview.messages|length }} ターン</dd>
         </dl>
       </div>
     </div>
