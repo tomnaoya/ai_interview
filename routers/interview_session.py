@@ -14,7 +14,13 @@ templates = Jinja2Templates(directory="templates")
 client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY", ""))
 
 # 正しいモデル名
-MODEL = "claude-sonnet-4-6"
+# モデルIDの優先順位リスト（上から順に試みる）
+MODELS = [
+    "claude-sonnet-4-5-20250514",   # Claude Sonnet 4.5 (stable)
+    "claude-3-5-sonnet-20241022",   # Claude 3.5 Sonnet (fallback)
+    "claude-haiku-4-5-20251001",    # Claude Haiku 4.5 (lightweight fallback)
+]
+MODEL = MODELS[0]
 
 
 def build_system_prompt(job: models.Job, applicant: models.Applicant) -> str:
@@ -244,24 +250,39 @@ async def send_message(token: str, request: Request, db: Session = Depends(get_d
         await _complete_interview(interview, db)
         return JSONResponse({"reply": closing, "completed": True})
 
-    # Claude API呼び出し
-    try:
-        response = client.messages.create(
-            model=MODEL,
-            max_tokens=1000,
-            system=system_prompt,
-            messages=history,
-        )
-        reply = response.content[0].text
-    except anthropic.APIConnectionError as e:
-        print(f"[ERROR] Connection error: {e}")
-        raise HTTPException(503, "AIサービスに接続できません")
-    except anthropic.AuthenticationError as e:
-        print(f"[ERROR] Auth error: {e}")
-        raise HTTPException(500, "APIキーが無効です")
-    except Exception as e:
-        print(f"[ERROR] Claude API error: {type(e).__name__}: {e}")
-        raise HTTPException(500, f"AI処理エラー: {type(e).__name__}")
+    # Claude API呼び出し（モデルフォールバック付き）
+    reply = None
+    last_error = None
+    for model_id in MODELS:
+        try:
+            response = client.messages.create(
+                model=model_id,
+                max_tokens=1000,
+                system=system_prompt,
+                messages=history,
+            )
+            reply = response.content[0].text
+            print(f"[OK] Used model: {model_id}")
+            break
+        except anthropic.APIConnectionError as e:
+            print(f"[ERROR] Connection error: {e}")
+            raise HTTPException(503, "AIサービスに接続できません")
+        except anthropic.AuthenticationError as e:
+            print(f"[ERROR] Auth error: {e}")
+            raise HTTPException(500, "APIキーが無効です")
+        except anthropic.BadRequestError as e:
+            print(f"[WARN] BadRequestError with model {model_id}: {e}")
+            last_error = e
+            continue  # 次のモデルを試す
+        except Exception as e:
+            print(f"[ERROR] Claude API {model_id}: {type(e).__name__}: {e}")
+            last_error = e
+            continue
+
+    if reply is None:
+        detail = str(last_error) if last_error else "全モデルで失敗"
+        print(f"[ERROR] All models failed. Last: {detail}")
+        raise HTTPException(500, f"AI処理失敗: {detail}")
 
     db.add(models.InterviewMessage(interview_id=interview.id, role="assistant", content=reply))
     db.commit()
