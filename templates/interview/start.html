@@ -527,8 +527,10 @@ function startListening(){
   setSt('rec','お話しください...','3秒間の沈黙で自動送信されます');
   try{
     recognition.start();
-    startMic();
+    // Only start mic meter on iOS (Android: SR manages mic exclusively)
+    if(isIOS) startMic();
     resetSil();
+    if(isAndroid) watchdogCheck();
   }catch(e){
     console.warn('recognition.start failed:',e);
     setSt('idle','もう一度お試しください','');
@@ -538,7 +540,7 @@ function stopListening(){
   clearSil();
   try{if(recognition) recognition.stop();}catch(e){}
   recognition=null;
-  stopMic();
+  if(isIOS) stopMic();
 }
 function resetSil(){
   clearSil();
@@ -548,6 +550,16 @@ function resetSil(){
       if(txt){stopListening();sendMsg(txt);}else resetSil();
     }
   },3000);
+}
+function watchdogCheck(){
+  // Android: if still in rec state after 8s with no input, restart SR
+  setTimeout(function(){
+    if(state==='rec'&&!isCompleted&&!pressTalk){
+      console.log('Watchdog: restarting SR');
+      stopListening();
+      startListening();
+    }
+  },8000);
 }
 function clearSil(){if(silTimer){clearTimeout(silTimer);silTimer=null;}}
 function toggleMic(){
@@ -652,10 +664,8 @@ function doStart(){
     // iOS only: press-to-talk
     $('bss').textContent='マイクボタンを押している間録音・離すと送信';
   } else {
-    // Android + Desktop: request mic permission only (recognition created on demand)
-    navigator.mediaDevices.getUserMedia({audio:true}).catch(function(){
-      hasSR=false; toText();
-    });
+    // Android/Desktop: mic permission handled by SpeechRecognition itself
+    // Do NOT call getUserMedia here - it conflicts with SR on Android
   }
 
   // Switch to interview screen immediately
