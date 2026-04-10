@@ -168,6 +168,20 @@
     .cb{font-size:14px;color:rgba(255,255,255,.55);line-height:1.9;white-space:pre-line}
     .cc{margin-top:18px;font-size:12px;color:rgba(255,255,255,.3)}
 
+    /* transcript preview + send button */
+    .trbox{width:100%;background:rgba(255,255,255,.07);
+      border:1px solid rgba(255,255,255,.15);border-radius:8px;
+      padding:8px 12px;font-size:12px;color:rgba(255,255,255,.85);
+      min-height:36px;max-height:90px;overflow-y:auto;
+      line-height:1.6;display:none;word-break:break-all;margin-top:6px;}
+    .trbox.on{display:block;}
+    .send-now{width:100%;padding:10px;border-radius:8px;
+      background:linear-gradient(135deg,var(--g),#059669);
+      color:#fff;border:none;font-size:13px;font-weight:600;
+      cursor:pointer;display:none;margin-top:6px;
+      align-items:center;justify-content:center;gap:6px;}
+    .send-now.on{display:flex;}
+
     /* mobile */
     @media(max-width:600px){
       .av-col{width:100%;flex-direction:row;padding:10px 12px;
@@ -311,6 +325,11 @@
         <div class="wf" id="wfd">{% for i in range(10) %}<div class="wb"></div>{% endfor %}</div>
         <span class="sw" onclick="toText()">テキスト入力</span>
       </div>
+      <!-- Transcript preview + manual send (mobile) -->
+      <div class="trbox" id="trbox"></div>
+      <button class="send-now" id="sendNow" onclick="sendNowClick()">
+        <i class="fas fa-paper-plane"></i> この内容で送信する
+      </button>
 
       <!-- Text bar (fallback) -->
       <div class="tbar" id="tbar" style="display:none">
@@ -375,6 +394,11 @@ function showErr(msg){
 // ── Status ─────────────────────────────────────────────────────────────────
 function setSt(s,text,sub){
   state=s;
+  // Hide transcript preview when not recording
+  if(s!=='rec' && s!=='idle'){
+    var tb=$('trbox'); if(tb){tb.textContent='';tb.className='trbox';}
+    var sn=$('sendNow'); if(sn) sn.className='send-now';
+  }
   var dotEl=$('dot'), stEl=$('stxt');
   if(dotEl) dotEl.className='dot'+(s==='rec'?' g':s==='spk'?' p':s==='thn'?' y':'');
   if(stEl) stEl.textContent=text;
@@ -584,6 +608,21 @@ function clearWatchdog(){
   if(watchTimer){clearTimeout(watchTimer);watchTimer=null;}
 }
 function clearSil(){if(silTimer){clearTimeout(silTimer);silTimer=null;}}
+function sendNowClick(){
+  // Manual send - user explicitly clicks send button
+  if(isSending||isCompleted) return;
+  var txt=(final_t+interim_t).trim();
+  if(!txt) return;
+  // Stop recognition
+  isRec=false; ptSent=true;
+  if(fallTimer){clearTimeout(fallTimer);fallTimer=null;}
+  try{if(recognition){recognition.stop();recognition=null;}}catch(e){}
+  if(isIOS) stopMic();
+  // Hide preview
+  var tb=$('trbox'); if(tb){tb.textContent='';tb.className='trbox';}
+  var sn=$('sendNow'); if(sn) sn.className='send-now';
+  sendMsg(txt);
+}
 function toggleMic(){
   if(state==='spk'||state==='thn'||isCompleted) return;
   if(state==='rec'){
@@ -604,6 +643,8 @@ function ptStart(e){
   if(!makeRec()) return;
   isRec=true; ptSent=false; final_t=''; interim_t='';
   var el=$('btr'); if(el) el.textContent='';
+  var tb=$('trbox'); if(tb){tb.textContent='';tb.className='trbox';}
+  var sn=$('sendNow'); if(sn) sn.className='send-now';
   setSt('rec','録音中...','離すと送信されます');
   try{recognition.start();}catch(err){console.warn('start err',err);}
   if(isIOS) startMic();
@@ -616,17 +657,27 @@ function ptEnd(e){
   if(fallTimer){clearTimeout(fallTimer);fallTimer=null;}
   // Capture text NOW in case recognition already stopped (Android auto-stop)
   var nowTxt=(final_t+interim_t).trim();
+  // Show transcript box so user can see what was captured
+  if(nowTxt){
+    var tb=$('trbox'); if(tb){tb.textContent=nowTxt;tb.className='trbox on';}
+    var sn=$('sendNow'); if(sn) sn.className='send-now on';
+  }
   // Stop recognition (triggers onend on iOS)
   try{if(recognition) recognition.stop();}catch(err){}
   // Fallback: 2 seconds gives time for onend to fire first
   fallTimer=setTimeout(function(){
     fallTimer=null;
-    if(ptSent) return; // onend already handled it
+    if(ptSent) return; // onend or sendNow already handled it
     ptSent=true;
-    // Use whatever text we have (either from onresult or captured above)
     var txt=(final_t+interim_t).trim()||nowTxt; interim_t='';
-    if(txt) sendMsg(txt);
-    else setSt('idle','マイクボタンを押して回答','押している間録音・離すと送信');
+    if(txt){
+      // Hide preview and send
+      var tb=$('trbox'); if(tb){tb.textContent='';tb.className='trbox';}
+      var sn=$('sendNow'); if(sn) sn.className='send-now';
+      sendMsg(txt);
+    } else {
+      setSt('idle','マイクボタンを押して回答','押している間録音・離すと送信');
+    }
   },2000);
 }
 function ptCancel(e){
