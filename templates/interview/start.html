@@ -369,9 +369,10 @@ var state='idle', isCompleted=false, isTouch=false;
 var recognition=null, voices=[];
 var final_t='', interim_t='', isRec=false;
 var silTimer=null, mouthTimer=null, watchTimer=null, fallTimer=null;
-var isListening=false; // prevent double-start
-var ptSent=false; // prevent double-send in press-to-talk
-var isSending=false; // global lock: prevent any duplicate API call
+var isListening=false;
+var ptSent=false;
+var isSending=false;
+var savedTxt=''; // text saved for manual send button
 var totalQ=0, turnN=0;
 var audioCtx=null, analyser=null, micStream=null, rafId=null;
 
@@ -529,6 +530,7 @@ function makeRec(){
     var combined=(final_t+int).trim();
     var el=$('btr'); if(el) el.textContent=combined;
     if(pressTalk && combined){
+      savedTxt=combined; // save for manual send button
       var tb=$('trbox'); if(tb){tb.textContent=combined;tb.className='trbox on';}
       var sn=$('sendNow'); if(sn) sn.className='send-now on';
     }
@@ -617,16 +619,21 @@ function clearWatchdog(){
 }
 function clearSil(){if(silTimer){clearTimeout(silTimer);silTimer=null;}}
 function sendNowClick(){
-  // Manual send - user explicitly clicks send button
-  if(isSending||isCompleted) return;
-  var txt=(final_t+interim_t).trim();
-  if(!txt) return;
-  // Stop recognition
-  isRec=false; ptSent=true;
+  if(isCompleted) return;
+  // Use savedTxt (persists even if isSending or onend already fired)
+  var txt=savedTxt||(final_t+interim_t).trim();
+  if(!txt){alert('音声が認識されていません。もう一度お試しください。');return;}
+  // If already sending, just show status (API call is in progress)
+  if(isSending){
+    setSt('thn','送信済みです。しばらくお待ちください...','');
+    var tb=$('trbox'); if(tb){tb.textContent='';tb.className='trbox';}
+    var sn=$('sendNow'); if(sn) sn.className='send-now';
+    savedTxt=''; return;
+  }
+  isRec=false; ptSent=true; savedTxt='';
   if(fallTimer){clearTimeout(fallTimer);fallTimer=null;}
   try{if(recognition){recognition.stop();recognition=null;}}catch(e){}
   if(isIOS) stopMic();
-  // Hide preview
   var tb=$('trbox'); if(tb){tb.textContent='';tb.className='trbox';}
   var sn=$('sendNow'); if(sn) sn.className='send-now';
   sendMsg(txt);
@@ -667,6 +674,7 @@ function ptEnd(e){
   var nowTxt=(final_t+interim_t).trim();
   // Show transcript box so user can see what was captured
   if(nowTxt){
+    savedTxt=nowTxt; // save for manual send button
     var tb=$('trbox'); if(tb){tb.textContent=nowTxt;tb.className='trbox on';}
     var sn=$('sendNow'); if(sn) sn.className='send-now on';
   }
@@ -797,7 +805,7 @@ function sendMsg(text){
   // Truncate very long text (prevents API timeout)
   if(text.length>500) text=text.slice(0,500)+'...';
   isSending=true;
-  ptSent=true;
+  ptSent=true; savedTxt='';
   // Stop any active recognition and clear timers
   isListening=false;
   clearSil(); clearWatchdog();
