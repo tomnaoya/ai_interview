@@ -349,8 +349,9 @@ var pressTalk = isMobile;
 var state='idle', isCompleted=false, isTouch=false;
 var recognition=null, voices=[];
 var final_t='', interim_t='', isRec=false;
-var silTimer=null, mouthTimer=null, watchTimer=null;
+var silTimer=null, mouthTimer=null, watchTimer=null, fallTimer=null;
 var isListening=false; // prevent double-start
+var ptSent=false; // prevent double-send in press-to-talk
 var totalQ=0, turnN=0;
 var audioCtx=null, analyser=null, micStream=null, rafId=null;
 
@@ -501,8 +502,11 @@ function makeRec(){
   };
   recognition.onend=function(){
     if(pressTalk){
-      // iOS: press-to-talk onend sends
+      // iOS/Android: press-to-talk onend
       if(isRec) return;
+      if(fallTimer){clearTimeout(fallTimer);fallTimer=null;}
+      if(ptSent) return; // already sent by fallTimer
+      ptSent=true;
       var txt=(final_t+interim_t).trim(); interim_t='';
       if(txt) sendMsg(txt);
       else setSt('idle','マイクボタンを押して回答','押している間録音・離すと送信');
@@ -587,13 +591,12 @@ function toggleMic(){
 }
 
 // ── Press-to-talk ─────────────────────────────────────────────────────────
-var fallTimer=null;
 function ptStart(e){
   isTouch=true; e.preventDefault();
   if(state==='spk'||state==='thn'||isCompleted) return;
   recognition=null; // recreate every time on iOS
   if(!makeRec()) return;
-  isRec=true; final_t=''; interim_t='';
+  isRec=true; ptSent=false; final_t=''; interim_t='';
   var el=$('btr'); if(el) el.textContent='';
   setSt('rec','録音中...','離すと送信されます');
   try{recognition.start();}catch(err){console.warn('start err',err);}
@@ -601,13 +604,14 @@ function ptStart(e){
 }
 function ptEnd(e){
   if(!isRec) return; e.preventDefault();
-  isRec=false;
+  isRec=false; ptSent=false;
   if(isIOS) stopMic();
   setSt('idle','確認中...','');
-  if(fallTimer) clearTimeout(fallTimer);
-  // Android: recognition may have already stopped itself
-  // Wait for onend, fallback timer handles the rest
+  if(fallTimer){clearTimeout(fallTimer);fallTimer=null;}
   fallTimer=setTimeout(function(){
+    fallTimer=null;
+    if(ptSent) return; // onend already sent
+    ptSent=true;
     var txt=(final_t+interim_t).trim(); interim_t='';
     if(txt) sendMsg(txt);
     else setSt('idle','マイクボタンを押して回答','押している間録音・離すと送信');
@@ -615,9 +619,10 @@ function ptEnd(e){
   try{recognition.stop();}catch(e){}
 }
 function ptCancel(e){
-  if(!isRec) return; isRec=false;
+  if(!isRec) return; isRec=false; ptSent=true; // prevent any send
+  if(fallTimer){clearTimeout(fallTimer);fallTimer=null;}
   final_t=''; interim_t='';
-  stopMic();
+  if(isIOS) stopMic();
   try{recognition.stop();}catch(e){}
   setSt('idle','マイクボタンを押して回答','押している間録音・離すと送信');
 }
