@@ -477,11 +477,23 @@ function speakAll(text, onDone){
   if(!clean){onDone&&onDone();return;}
   setSt('spk','AI面接官が話しています...','話し終わると自動でマイクがONになります');
   var chunks=splitText(clean);
-  var i=0;
+  if(!chunks.length){onDone&&onDone();return;}
+  var i=0, called=false;
   var voice=getVoice();
   var resume_iv=setInterval(function(){if(synth.paused)synth.resume();},5000);
+  // フォールバック: TTS未完了でも最大15秒後にonDoneを呼ぶ
+  var maxMs=Math.max(8000, clean.length*80);
+  var fb=setTimeout(function(){
+    if(called) return; called=true;
+    clearInterval(resume_iv); synth.cancel();
+    onDone&&onDone();
+  }, maxMs);
   function next(){
-    if(i>=chunks.length){clearInterval(resume_iv);onDone&&onDone();return;}
+    if(i>=chunks.length){
+      if(called) return; called=true;
+      clearTimeout(fb); clearInterval(resume_iv);
+      onDone&&onDone(); return;
+    }
     var u=new SpeechSynthesisUtterance(chunks[i]);
     u.lang=LANG_CODE; u.rate=0.9; u.pitch=GENDER==='female'?1.1:0.85; u.volume=1;
     if(voice) u.voice=voice;
@@ -847,6 +859,31 @@ function sendMsg(text){
     setSt('idle','再試行できます','マイクボタンを押して回答');
   });
 }
+// ── Page Visibility: アプリ復帰時のリセット ─────────────────────────────
+document.addEventListener('visibilitychange', function(){
+  if(document.hidden) {
+    // バックグラウンドへ: タイマー系を止める
+    clearSil(); clearWatchdog();
+  } else {
+    // フォアグラウンドへ復帰
+    if(isCompleted) return;
+    // TTSをキャンセルして状態をリセット
+    synth.cancel();
+    // 認識も止める
+    try{if(recognition){recognition.stop();recognition=null;}}catch(e){}
+    isListening=false; isRec=false; isSending=false;
+    clearSil(); clearWatchdog();
+    if(fallTimer){clearTimeout(fallTimer);fallTimer=null;}
+    // 面接中であればUIをリセット
+    if($('pageInterview') && $('pageInterview').classList.contains('on')){
+      hideType();
+      setSt('idle',
+        pressTalk ? 'マイクボタンを押して回答' : '回答を入力してください',
+        pressTalk ? '押している間録音・離すと送信' : 'テキスト入力して送信ボタンを押してください'
+      );
+    }
+  }
+});
 </script>
 </body>
 </html>
