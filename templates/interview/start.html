@@ -571,8 +571,22 @@ function setupRecognition() {
     if(!pressTalkMode) resetSilence();
   };
   recognition.onend=()=>{
-    if(!pressTalkMode && state==='listening'&&!isCompleted)
-      try{recognition.start();}catch(e){}
+    if(pressTalkMode) {
+      // Press-to-talk: send when recording stopped
+      if(isRecording) return; // still holding - shouldn't happen
+      const txt = finalTranscript.trim();
+      if(txt && state !== 'thinking' && state !== 'ai_speaking') {
+        sendMsg(txt);
+      } else if(!txt && state === 'listening') {
+        // Nothing recorded
+        setStatus('idle','マイクボタンを押して回答してください','押している間録音・離すと送信');
+        const hint = document.getElementById('pressTalkHint');
+        if(hint) hint.style.display='block';
+      }
+    } else {
+      if(state==='listening'&&!isCompleted)
+        try{recognition.start();}catch(e){}
+    }
   };
   recognition.onerror=e=>{
     if(e.error==='not-allowed'){
@@ -745,21 +759,23 @@ function stopPressRecord(e) {
   e.preventDefault();
   if(!isRecording) return;
   isRecording = false;
-  try { recognition.stop(); } catch(err) {}
   stopMicMeter();
-  const txt = finalTranscript.trim();
-  if(txt) {
-    sendMsg(txt);
-  } else {
-    setStatus('idle','マイクボタンを押して回答してください','押している間録音・離すと送信');
-    const hint = document.getElementById('pressTalkHint');
-    if(hint) hint.style.display='block';
+  // Set status to "processing" while waiting for onend
+  setStatus('thinking','音声を確認中...','');
+  // Stop recognition → triggers onend → onend sends the message
+  try { recognition.stop(); } catch(err) {
+    // If stop fails, try to send what we have
+    const txt = finalTranscript.trim();
+    if(txt) sendMsg(txt);
+    else setStatus('idle','もう一度お試しください','押している間録音・離すと送信');
   }
 }
 
 function cancelPressRecord(e) {
   e.preventDefault();
+  if(!isRecording) return;
   isRecording = false;
+  finalTranscript = ''; // clear so onend doesn't send
   try { recognition.stop(); } catch(err) {}
   stopMicMeter();
   setStatus('idle','マイクボタンを押して回答してください','押している間録音・離すと送信');
