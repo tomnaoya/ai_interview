@@ -572,13 +572,13 @@ function setupRecognition() {
   };
   recognition.onend=()=>{
     if(pressTalkMode) {
-      // Press-to-talk: send when recording stopped
-      if(isRecording) return; // still holding - shouldn't happen
+      if(isRecording) return; // まだ押している
       const txt = finalTranscript.trim();
-      if(txt && state !== 'thinking' && state !== 'ai_speaking') {
+      if(txt) {
+        // 認識結果あり → 送信
         sendMsg(txt);
-      } else if(!txt && state === 'listening') {
-        // Nothing recorded
+      } else {
+        // 認識結果なし → 待機に戻す
         setStatus('idle','マイクボタンを押して回答してください','押している間録音・離すと送信');
         const hint = document.getElementById('pressTalkHint');
         if(hint) hint.style.display='block';
@@ -760,14 +760,34 @@ function stopPressRecord(e) {
   if(!isRecording) return;
   isRecording = false;
   stopMicMeter();
-  // Set status to "processing" while waiting for onend
-  setStatus('thinking','音声を確認中...','');
-  // Stop recognition → triggers onend → onend sends the message
-  try { recognition.stop(); } catch(err) {
-    // If stop fails, try to send what we have
+  setStatus('idle','音声を確認中...','');
+
+  // タイムアウト：2秒以内にonendが来なければ強制リセット
+  const fallbackTimer = setTimeout(() => {
+    if(state !== 'thinking' && state !== 'ai_speaking') {
+      const txt = finalTranscript.trim();
+      if(txt) sendMsg(txt);
+      else {
+        setStatus('idle','マイクボタンを押して回答してください','押している間録音・離すと送信');
+        const hint = document.getElementById('pressTalkHint');
+        if(hint) hint.style.display='block';
+      }
+    }
+  }, 2000);
+
+  try {
+    recognition.stop();
+    // onend fires → clears timer implicitly via sendMsg/setStatus
+    recognition.onfallbackClear = () => clearTimeout(fallbackTimer);
+  } catch(err) {
+    clearTimeout(fallbackTimer);
     const txt = finalTranscript.trim();
     if(txt) sendMsg(txt);
-    else setStatus('idle','もう一度お試しください','押している間録音・離すと送信');
+    else {
+      setStatus('idle','マイクボタンを押して回答してください','押している間録音・離すと送信');
+      const hint = document.getElementById('pressTalkHint');
+      if(hint) hint.style.display='block';
+    }
   }
 }
 
