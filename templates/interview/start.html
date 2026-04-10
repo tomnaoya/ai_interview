@@ -489,7 +489,8 @@ function makeRec(){
   var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
   recognition=new SR();
   recognition.lang=LANG_CODE;
-  recognition.continuous=!pressTalk; // iOS=false, Android+Desktop=true
+  // continuous=true for all: prevents auto-stop during long speech on both iOS and Android
+  recognition.continuous = true;
   recognition.interimResults=true;
   recognition.onresult=function(e){
     var int='';
@@ -503,8 +504,12 @@ function makeRec(){
   };
   recognition.onend=function(){
     if(pressTalk){
-      // iOS/Android: press-to-talk onend
-      if(isRec) return;
+      if(isRec){
+        // Android: recognition auto-stopped while still recording
+        // Don't send yet - wait for ptEnd. Text is already in final_t.
+        console.log('Early onend while recording, final_t length:', final_t.length);
+        return;
+      }
       if(fallTimer){clearTimeout(fallTimer);fallTimer=null;}
       if(ptSent) return; // already sent by fallTimer
       ptSent=true;
@@ -609,15 +614,20 @@ function ptEnd(e){
   if(isIOS) stopMic();
   setSt('idle','確認中...','');
   if(fallTimer){clearTimeout(fallTimer);fallTimer=null;}
+  // Capture text NOW in case recognition already stopped (Android auto-stop)
+  var nowTxt=(final_t+interim_t).trim();
+  // Stop recognition (triggers onend on iOS)
+  try{if(recognition) recognition.stop();}catch(err){}
+  // Fallback: 2 seconds gives time for onend to fire first
   fallTimer=setTimeout(function(){
     fallTimer=null;
-    if(ptSent) return; // onend already sent
+    if(ptSent) return; // onend already handled it
     ptSent=true;
-    var txt=(final_t+interim_t).trim(); interim_t='';
+    // Use whatever text we have (either from onresult or captured above)
+    var txt=(final_t+interim_t).trim()||nowTxt; interim_t='';
     if(txt) sendMsg(txt);
     else setSt('idle','マイクボタンを押して回答','押している間録音・離すと送信');
-  },1500);
-  try{recognition.stop();}catch(e){}
+  },2000);
 }
 function ptCancel(e){
   if(!isRec) return; isRec=false; ptSent=true; // prevent any send
