@@ -242,11 +242,13 @@ async def send_message(token: str, request: Request, db: Session = Depends(get_d
     if not history:
         history = [{"role": "user", "content": user_message}]
 
-    # ターン数チェック
+    # ターン数チェック（バッファを大きく設定してAIに判断させる）
     user_turns = sum(1 for m in interview.messages if m.role == "user")
     total_questions = len(job.ai_questions) if job.ai_questions else (job.ai_max_turns or 10)
+    # AIが自然に終了できるよう余裕を持たせる（質問数×2まで許容）
+    max_turns = total_questions * 2
 
-    if user_turns >= total_questions + 2:
+    if user_turns >= max_turns:
         closing = "本日は面接にご参加いただきありがとうございました。以上で面接を終了いたします。[INTERVIEW_COMPLETE]"
         db.add(models.InterviewMessage(interview_id=interview.id, role="assistant", content=closing))
         await _complete_interview(interview, db)

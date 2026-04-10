@@ -352,6 +352,7 @@ var final_t='', interim_t='', isRec=false;
 var silTimer=null, mouthTimer=null, watchTimer=null, fallTimer=null;
 var isListening=false; // prevent double-start
 var ptSent=false; // prevent double-send in press-to-talk
+var isSending=false; // global lock: prevent any duplicate API call
 var totalQ=0, turnN=0;
 var audioCtx=null, analyser=null, micStream=null, rafId=null;
 
@@ -723,10 +724,13 @@ function doStart(){
 
 // ── SEND ─────────────────────────────────────────────────────────────────
 function sendMsg(text){
-  if(isCompleted) return;
+  if(isCompleted||isSending) return; // global duplicate guard
+  isSending=true;
+  ptSent=true; // also set ptSent to block any timer
   // Stop any active recognition and clear timers
   isListening=false;
   clearSil(); clearWatchdog();
+  if(fallTimer){clearTimeout(fallTimer);fallTimer=null;}
   try{if(recognition){recognition.stop();recognition=null;}}catch(e){}
   setSt('thn','考え中...','AIが回答を生成しています');
   addMsg('user',text);
