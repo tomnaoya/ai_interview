@@ -297,13 +297,15 @@
       <!-- Voice bar -->
       <div class="ibar" id="vbar">
         <button class="mbtn idle" id="mbtn"
-          ontouchstart="ptStart(event)" ontouchend="ptEnd(event)" ontouchcancel="ptCancel(event)"
-          onclick="if(!isTouch)toggleMic()">
+          ontouchstart="if(pressTalk)ptStart(event)"
+          ontouchend="if(pressTalk)ptEnd(event)"
+          ontouchcancel="if(pressTalk)ptCancel(event)"
+          onclick="if(!pressTalk||!isTouch)toggleMic()">
           <i class="fas fa-microphone"></i>
         </button>
         <div class="bi">
           <div class="bs" id="bs">AIが話し終わるまでお待ちください</div>
-          <div class="bss" id="bss">音声認識は自動で開始されます</div>
+          <div class="bss" id="bss">{% if job.avatar_gender %}音声認識は自動で開始されます{% endif %}</div>
           <div class="btr" id="btr"></div>
         </div>
         <div class="wf" id="wfd">{% for i in range(10) %}<div class="wb"></div>{% endfor %}</div>
@@ -335,9 +337,13 @@ var TOKEN = "{{ interview.token }}";
 var GENDER = "{{ job.avatar_gender or 'female' }}";
 var LANG = "{{ job.interview_language or 'ja' }}";
 var LANG_CODE = LANG==='en'?'en-US':LANG==='vi'?'vi-VN':'ja-JP';
-var isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+var isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+var isAndroid = /Android/i.test(navigator.userAgent);
+var isMobile = isIOS || isAndroid;
 var hasSR = !!(window.SpeechRecognition||window.webkitSpeechRecognition);
 var synth = window.speechSynthesis;
+// Press-to-talk only on iOS (Android supports continuous recognition)
+var pressTalk = isIOS;
 
 // ── State ─────────────────────────────────────────────────────────────────
 var state='idle', isCompleted=false, isTouch=false;
@@ -462,10 +468,11 @@ function speakAll(text, onDone){
 function afterSpeak(){
   if(isCompleted) return;
   if(hasSR){
-    if(isMobile){
+    if(pressTalk){
+      // iOS only: press-to-talk
       setSt('idle','マイクボタンを押して回答','押している間録音・離すと送信');
-      var h=$('presshint'); if(h) h.style.display='block';
     } else {
+      // Android + Desktop: auto-start listening
       startListening();
     }
   } else {
@@ -479,7 +486,7 @@ function makeRec(){
   var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
   recognition=new SR();
   recognition.lang=LANG_CODE;
-  recognition.continuous=!isMobile;
+  recognition.continuous=!pressTalk; // iOS=false, Android+Desktop=true
   recognition.interimResults=true;
   recognition.onresult=function(e){
     var int='';
@@ -492,12 +499,14 @@ function makeRec(){
     if(!isMobile) resetSil();
   };
   recognition.onend=function(){
-    if(isMobile){
+    if(pressTalk){
+      // iOS press-to-talk: onend handles sending
       if(isRec) return;
       var txt=(final_t+interim_t).trim(); interim_t='';
       if(txt) sendMsg(txt);
-      else {setSt('idle','マイクボタンを押して回答','押している間録音・離すと送信');}
+      else setSt('idle','マイクボタンを押して回答','押している間録音・離すと送信');
     } else {
+      // Android + Desktop: restart continuous recognition
       if(state==='rec'&&!isCompleted) try{recognition.start();}catch(e){}
     }
   };
@@ -628,13 +637,15 @@ function doStart(){
   }
 
   // Setup mode
-  if(!hasSR){toText();}
-  else if(isMobile){
-    // Press-to-talk: don't auto-request mic yet
+  if(!hasSR){
+    toText();
+  } else if(pressTalk){
+    // iOS only: press-to-talk
     $('bss').textContent='マイクボタンを押している間録音・離すと送信';
   } else {
-    // Desktop: setup continuous recognition
+    // Android + Desktop: continuous recognition (request mic permission)
     makeRec();
+    navigator.mediaDevices.getUserMedia({audio:true}).catch(function(){});
   }
 
   // Switch to interview screen immediately
