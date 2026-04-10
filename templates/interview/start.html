@@ -620,16 +620,10 @@ function clearWatchdog(){
 function clearSil(){if(silTimer){clearTimeout(silTimer);silTimer=null;}}
 function sendNowClick(){
   if(isCompleted) return;
-  // Use savedTxt (persists even if isSending or onend already fired)
   var txt=savedTxt||(final_t+interim_t).trim();
   if(!txt){alert('音声が認識されていません。もう一度お試しください。');return;}
-  // If already sending, just show status (API call is in progress)
-  if(isSending){
-    setSt('thn','送信済みです。しばらくお待ちください...','');
-    var tb=$('trbox'); if(tb){tb.textContent='';tb.className='trbox';}
-    var sn=$('sendNow'); if(sn) sn.className='send-now';
-    savedTxt=''; return;
-  }
+  // Force reset isSending in case previous call got stuck
+  isSending=false;
   isRec=false; ptSent=true; savedTxt='';
   if(fallTimer){clearTimeout(fallTimer);fallTimer=null;}
   try{if(recognition){recognition.stop();recognition=null;}}catch(e){}
@@ -817,6 +811,13 @@ function sendMsg(text){
   showType(); turnN++;
   if(totalQ>0) $('tcnt').textContent=turnN+'/'+totalQ+'問';
 
+  // 40秒タイムアウト
+  var tid=setTimeout(function(){
+    isSending=false; hideType();
+    showErr('タイムアウト。マイクボタンを押して再試行してください。');
+    setSt('idle','再試行できます','マイクボタンを押して回答');
+  },40000);
+
   fetch('/interview/'+TOKEN+'/message',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
@@ -824,8 +825,8 @@ function sendMsg(text){
   })
   .then(function(r){return r.text().then(function(t){return{ok:r.ok,status:r.status,text:t};});})
   .then(function(r){
-    hideType();
-    if(!r.ok){showErr('サーバーエラー('+r.status+'): '+r.text);setSt('idle','再試行できます','');return;}
+    clearTimeout(tid); isSending=false; hideType();
+    if(!r.ok){showErr('サーバーエラー('+r.status+'): '+r.text);setSt('idle','再試行できます','マイクボタンを押して回答');return;}
     var d=JSON.parse(r.text);
     addMsg('ai',d.reply);
     if(d.completed||d.reply.indexOf('[INTERVIEW_COMPLETE]')!==-1){
@@ -841,7 +842,9 @@ function sendMsg(text){
     }
   })
   .catch(function(e){
-    hideType(); showErr('通信エラー: '+e.message); setSt('idle','再試行できます','');
+    clearTimeout(tid); isSending=false;
+    hideType(); showErr('通信エラー: '+e.message);
+    setSt('idle','再試行できます','マイクボタンを押して回答');
   });
 }
 </script>
