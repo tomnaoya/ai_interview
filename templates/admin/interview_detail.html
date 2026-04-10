@@ -31,6 +31,12 @@
           {% if interview.evaluation_summary %}
           <p class="evaluation-summary-text">{{ interview.evaluation_summary }}</p>
           {% endif %}
+          {% if not interview.total_score or interview.evaluation_summary == '評価処理中にエラーが発生しました' %}
+          <button class="btn btn-primary btn-sm mt-1" onclick="reEvaluate({{ interview.id }})">
+            <i class="fas fa-redo"></i> AI評価を再実行
+          </button>
+          <div id="evalMsg" style="font-size:12px;margin-top:6px;color:#6b7280"></div>
+          {% endif %}
         </div>
       </div>
 
@@ -139,4 +145,32 @@
     </div>
   </div>
 </div>
+
+{% block scripts %}
+<script>
+async function reEvaluate(id) {
+  const btn = event.target;
+  const msg = document.getElementById('evalMsg');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 評価中...';
+  msg.textContent = 'AIが会話内容を分析しています...';
+  try {
+    const res = await fetch(`/admin/interview-history/${id}/re-evaluate`, {method:'POST'});
+    const data = await res.json();
+    if(data.ok) {
+      msg.textContent = '✅ 評価完了！ページを更新します...';
+      setTimeout(() => location.reload(), 1500);
+    } else {
+      msg.textContent = '❌ ' + JSON.stringify(data);
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-redo"></i> AI評価を再実行';
+    }
+  } catch(e) {
+    msg.textContent = '❌ エラー: ' + e.message;
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-redo"></i> AI評価を再実行';
+  }
+}
+</script>
+{% endblock %}
 {% endblock %}

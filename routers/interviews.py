@@ -81,3 +81,46 @@ async def export_interview(
             for m in interview.messages
         ],
     })
+
+
+@router.post("/interview-history/{interview_id}/re-evaluate")
+async def re_evaluate(
+    interview_id: int,
+    db: Session = Depends(get_db),
+    admin=Depends(get_current_admin),
+):
+    """面接評価を再実行する"""
+    from routers.interview_session import build_evaluation_prompt, MODEL, MODELS
+    import anthropic, json
+    interview = _load_interview(db, interview_id)
+    if not interview:
+        raise HTTPException(404)
+    if interview.status != "completed":
+        raise HTTPException(400, "完了した面接のみ再評価できます")
+
+    client = anthropic.Anthropic(api_key=__import__("os").getenv("ANTHROPIC_API_KEY",""))
+    eval_prompt = build_evaluation_prompt(interview.job, interview.messages)
+
+    last_err = None
+    for model_id in MODELS:
+        try:
+            resp = client.messages.create(
+                model=model_id, max_tokens=2000,
+                messages=[{"role":"user","content":eval_prompt}]
+            )
+            text = resp.content[0].text.strip()
+            if "```" in text:
+                text = text.split("```")[1]
+                if text.startswith("json"): text = text[4:]
+            data = json.loads(text)
+            interview.total_score = data.get("total_score", 0)
+            interview.evaluation_summary = data.get("summary","")
+            interview.evaluation_details = data
+            interview.ai_recommendation = data.get("recommendation","review")
+            db.commit()
+            return JSONResponse({"ok": True, "score": interview.total_score})
+        except Exception as e:
+            last_err = e
+            continue
+
+    raise HTTPException(500, f"評価失敗: {last_err}")
