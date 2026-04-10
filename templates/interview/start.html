@@ -422,6 +422,7 @@ let mouthAnim = null;
 let voicesList = [];
 let useVoiceMode = hasSpeechRecognition; // 全ブラウザで音声を試みる
 let isRecording = false; // press-to-talk state
+let interimTranscript = ''; // iOS用：暫定結果も保存
 
 // ── Voice loading ─────────────────────────────────────────────────────────
 function loadVoices() {
@@ -564,8 +565,10 @@ function setupRecognition() {
     let interim='';
     for(let i=e.resultIndex;i<e.results.length;i++){
       const t=e.results[i][0].transcript;
-      if(e.results[i].isFinal)finalTranscript+=t;else interim+=t;
+      if(e.results[i].isFinal) finalTranscript+=t;
+      else interim+=t;
     }
+    interimTranscript = interim;
     const el=document.getElementById('vtranscript');
     if(el) el.textContent=finalTranscript+interim;
     if(!pressTalkMode) resetSilence();
@@ -573,12 +576,12 @@ function setupRecognition() {
   recognition.onend=()=>{
     if(pressTalkMode) {
       if(isRecording) return; // まだ押している
-      const txt = finalTranscript.trim();
+      // iOSはisFinal前にonendが来ることがある→interimも使う
+      const txt = (finalTranscript + interimTranscript).trim();
+      interimTranscript = '';
       if(txt) {
-        // 認識結果あり → 送信
         sendMsg(txt);
       } else {
-        // 認識結果なし → 待機に戻す
         setStatus('idle','マイクボタンを押して回答してください','押している間録音・離すと送信');
         const hint = document.getElementById('pressTalkHint');
         if(hint) hint.style.display='block';
@@ -748,6 +751,7 @@ function startPressRecord(e) {
 
   isRecording = true;
   finalTranscript = '';
+  interimTranscript = '';
   const vt = document.getElementById('vtranscript');
   if(vt) vt.textContent = '';
   const hint = document.getElementById('pressTalkHint');
@@ -773,16 +777,16 @@ function stopPressRecord(e) {
 
   // タイムアウト：2秒以内にonendが来なければ強制リセット
   const fallbackTimer = setTimeout(() => {
-    if(state !== 'thinking' && state !== 'ai_speaking') {
-      const txt = finalTranscript.trim();
-      if(txt) sendMsg(txt);
-      else {
-        setStatus('idle','マイクボタンを押して回答してください','押している間録音・離すと送信');
-        const hint = document.getElementById('pressTalkHint');
-        if(hint) hint.style.display='block';
-      }
+    const txt = (finalTranscript + interimTranscript).trim();
+    interimTranscript = '';
+    if(txt) {
+      sendMsg(txt);
+    } else {
+      setStatus('idle','マイクボタンを押して回答してください','押している間録音・離すと送信');
+      const hint = document.getElementById('pressTalkHint');
+      if(hint) hint.style.display='block';
     }
-  }, 2000);
+  }, 1500);
 
   try {
     recognition.stop();
