@@ -521,11 +521,20 @@ function unlockTTS() {
 
 // ── TTS (チャンク分割でAndroid Chromeのバグを回避) ─────────────────────────
 function splitToChunks(text) {
-  // 句読点・改行で分割して短い文にする
-  const parts = text.split(/(?<=[。．！？
-])|(?<=。)|(?<=
-)/);
-  return parts.map(s=>s.trim()).filter(s=>s.length>0);
+  // ルックビハインド不使用（Android旧Chrome対応）
+  // 句読点の後ろで分割
+  const result = [];
+  let buf = '';
+  for(let i = 0; i < text.length; i++) {
+    buf += text[i];
+    if('。．！？
+'.indexOf(text[i]) !== -1 && buf.trim().length > 0) {
+      result.push(buf.trim());
+      buf = '';
+    }
+  }
+  if(buf.trim().length > 0) result.push(buf.trim());
+  return result.length > 0 ? result : [text];
 }
 
 async function speak(text, onEnd) {
@@ -726,7 +735,19 @@ function afterAISpeaks(){
 async function startInterview(){
   const btn=document.getElementById('startBtn');
   btn.disabled=true; btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> 開始中...';
+  try {
+    await _startInterview(btn);
+  } catch(e) {
+    console.error('startInterview error:', e);
+    const err=document.getElementById('consentErr');
+    err.textContent='⚠ エラーが発生しました: '+e.message;
+    err.classList.add('show');
+    btn.disabled=false;
+    btn.innerHTML='<i class="fas fa-play-circle"></i> 面接を開始する';
+  }
+}
 
+async function _startInterview(btn){
   // iOS requires TTS unlock via user gesture - must be synchronous before any await
   unlockTTS();
 
