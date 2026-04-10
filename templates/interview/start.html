@@ -500,14 +500,14 @@ function makeRec(){
   };
   recognition.onend=function(){
     if(pressTalk){
-      // iOS press-to-talk: onend handles sending
+      // iOS: press-to-talk onend sends
       if(isRec) return;
       var txt=(final_t+interim_t).trim(); interim_t='';
       if(txt) sendMsg(txt);
       else setSt('idle','マイクボタンを押して回答','押している間録音・離すと送信');
     } else {
-      // Android + Desktop: restart continuous recognition
-      if(state==='rec'&&!isCompleted) try{recognition.start();}catch(e){}
+      // Android/Desktop: recreate and restart via startListening()
+      if(state==='rec'&&!isCompleted) startListening();
     }
   };
   recognition.onerror=function(e){
@@ -519,16 +519,25 @@ function makeRec(){
 
 function startListening(){
   if(isCompleted) return;
+  // Recreate recognition every time (Android Chrome reuse causes silent failure)
+  recognition=null;
+  if(!makeRec()) return;
   final_t=''; interim_t='';
   var el=$('btr'); if(el) el.textContent='';
   setSt('rec','お話しください...','3秒間の沈黙で自動送信されます');
-  if(!recognition) makeRec();
-  try{recognition.start();}catch(e){}
-  startMic(); resetSil();
+  try{
+    recognition.start();
+    startMic();
+    resetSil();
+  }catch(e){
+    console.warn('recognition.start failed:',e);
+    setSt('idle','もう一度お試しください','');
+  }
 }
 function stopListening(){
   clearSil();
-  try{recognition.stop();}catch(e){}
+  try{if(recognition) recognition.stop();}catch(e){}
+  recognition=null;
   stopMic();
 }
 function resetSil(){
@@ -643,9 +652,10 @@ function doStart(){
     // iOS only: press-to-talk
     $('bss').textContent='マイクボタンを押している間録音・離すと送信';
   } else {
-    // Android + Desktop: continuous recognition (request mic permission)
-    makeRec();
-    navigator.mediaDevices.getUserMedia({audio:true}).catch(function(){});
+    // Android + Desktop: request mic permission only (recognition created on demand)
+    navigator.mediaDevices.getUserMedia({audio:true}).catch(function(){
+      hasSR=false; toText();
+    });
   }
 
   // Switch to interview screen immediately
