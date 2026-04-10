@@ -427,10 +427,21 @@ let interimTranscript = ''; // iOS用：暫定結果も保存
 // ── Voice loading ─────────────────────────────────────────────────────────
 function loadVoices() {
   return new Promise(resolve => {
-    const v = synth.getVoices();
-    if(v.length>0){voicesList=v;resolve(v);return;}
-    synth.onvoiceschanged=()=>{voicesList=synth.getVoices();resolve(voicesList);};
-    setTimeout(()=>{voicesList=synth.getVoices();resolve(voicesList);},1500);
+    try {
+      if(!window.speechSynthesis){resolve([]);return;}
+      const v = synth.getVoices();
+      if(v.length>0){voicesList=v;resolve(v);return;}
+      let resolved=false;
+      synth.onvoiceschanged=()=>{
+        if(resolved)return; resolved=true;
+        voicesList=synth.getVoices();resolve(voicesList);
+      };
+      // Short timeout - don't keep user waiting
+      setTimeout(()=>{
+        if(resolved)return; resolved=true;
+        voicesList=synth.getVoices()||[];resolve(voicesList);
+      },500);
+    } catch(e) { resolve([]); }
   });
 }
 
@@ -734,62 +745,60 @@ function afterAISpeaks(){
 // ── Start interview ───────────────────────────────────────────────────────
 async function startInterview(){
   const btn=document.getElementById('startBtn');
-  btn.disabled=true; btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> 開始中...';
-  try {
-    await _startInterview(btn);
-  } catch(e) {
-    console.error('startInterview error:', e);
-    const err=document.getElementById('consentErr');
-    err.textContent='⚠ エラーが発生しました: '+e.message;
-    err.classList.add('show');
-    btn.disabled=false;
-    btn.innerHTML='<i class="fas fa-play-circle"></i> 面接を開始する';
-  }
-}
+  btn.disabled=true;
+  btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> 開始中...';
 
-async function _startInterview(btn){
-  // iOS requires TTS unlock via user gesture - must be synchronous before any await
+  // 1) User gesture → TTS unlock (synchronous, before any await)
   unlockTTS();
 
-  await loadVoices();
-
-  // Setup input mode
+  // 2) Setup input mode (synchronous)
   if(useVoiceMode){
     if(!setupRecognition()) useVoiceMode=false;
-    if(useVoiceMode && !pressTalkMode){
-      // Desktop: request mic permission upfront
-      try{await navigator.mediaDevices.getUserMedia({audio:true});}
-      catch(e){useVoiceMode=false;}
-    }
   }
   if(!useVoiceMode){
     document.getElementById('barVoice').style.display='none';
     document.getElementById('barText').style.display='flex';
-    document.getElementById('voiceToggle').style.display='none';
-  } else if(pressTalkMode) {
-    // Mobile voice mode: show press-to-talk hint
+  } else if(pressTalkMode){
     document.getElementById('pressTalkHint').style.display='block';
     document.getElementById('vsub').textContent='マイクボタンを押している間録音・離すと送信';
   }
 
+  // 3) Screen transition immediately (don't wait)
+  document.getElementById('sc-consent').style.display='none';
+  document.getElementById('sc-interview').classList.add('active');
+  setStatus('thinking','接続中...','サーバーに接続しています');
+
+  // 4) Load voices in parallel with API call
+  loadVoices();
+
+  // 5) Desktop only: mic permission (async, after screen shown)
+  if(useVoiceMode && !pressTalkMode){
+    navigator.mediaDevices.getUserMedia({audio:true}).catch(()=>{useVoiceMode=false;});
+  }
+
+  // 6) API call
   let data;
   try{
-    const res=await fetch(`/interview/${TOKEN}/start`,{method:'POST'});
-    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    const res=await fetch('/interview/'+TOKEN+'/start',{method:'POST'});
+    if(!res.ok) throw new Error('サーバーエラー '+res.status);
     data=await res.json();
   }catch(e){
+    setStatus('idle','','');
+    document.getElementById('sc-interview').classList.remove('active');
+    document.getElementById('sc-consent').style.display='flex';
     const err=document.getElementById('consentErr');
-    err.textContent='⚠ サーバー接続失敗: '+e.message; err.classList.add('show');
-    btn.disabled=false; btn.innerHTML='<i class="fas fa-play-circle"></i> 面接を開始する';
+    err.textContent='⚠ 接続失敗: '+e.message;
+    err.classList.add('show');
+    btn.disabled=false;
+    btn.innerHTML='<i class="fas fa-play-circle"></i> 面接を開始する';
     return;
   }
 
-  fetch(`/interview/${TOKEN}/messages`).then(r=>r.json()).then(d=>{
+  // 7) Show greeting and start
+  fetch('/interview/'+TOKEN+'/messages').then(r=>r.json()).then(d=>{
     totalQuestions=d.total_questions||0;
   }).catch(()=>{});
 
-  document.getElementById('sc-consent').style.display='none';
-  document.getElementById('sc-interview').classList.add('active');
   appendMsg('ai', data.greeting);
   speak(data.greeting, afterAISpeaks);
 }
