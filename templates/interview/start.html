@@ -741,16 +741,25 @@ async function startInterview(){
 function startPressRecord(e) {
   e.preventDefault();
   if(state==='ai_speaking'||state==='thinking'||isCompleted) return;
-  if(!recognition && !setupRecognition()) return;
+
+  // iOSは毎回recognition を作り直す必要がある
+  recognition = null;
+  if(!setupRecognition()) return;
+
   isRecording = true;
   finalTranscript = '';
-  document.getElementById('vtranscript').textContent = '';
-  document.getElementById('pressTalkHint').style.display = 'none';
+  const vt = document.getElementById('vtranscript');
+  if(vt) vt.textContent = '';
+  const hint = document.getElementById('pressTalkHint');
+  if(hint) hint.style.display = 'none';
   setStatus('listening','録音中...','離すと送信されます');
-  try { recognition.start(); } catch(err) {
-    // Already started, stop and restart
-    try { recognition.stop(); } catch(e2) {}
-    setTimeout(() => { try { recognition.start(); } catch(e3) {} }, 200);
+  try {
+    recognition.start();
+  } catch(err) {
+    console.warn('recognition.start error:', err);
+    setStatus('idle','マイクボタンを押して回答してください','押している間録音・離すと送信');
+    if(hint) hint.style.display='block';
+    return;
   }
   startMicMeter();
 }
