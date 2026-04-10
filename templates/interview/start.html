@@ -513,20 +513,21 @@ function makeRec(){
   var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
   recognition=new SR();
   recognition.lang=LANG_CODE;
-  // continuous=true for all: prevents auto-stop during long speech on both iOS and Android
-  recognition.continuous = true;
+  // pressTalk: continuous=false (avoids Android duplicate chunk bug)
+  // Desktop auto-listen: continuous=true
+  recognition.continuous = !pressTalk;
   recognition.interimResults=true;
   recognition.onresult=function(e){
-    // Rebuild entire transcript from scratch each call (prevents duplication in continuous mode)
-    var f='', int='', i;
-    for(i=0;i<e.results.length;i++){
-      if(e.results[i].isFinal) f+=e.results[i][0].transcript;
-      else int+=e.results[i][0].transcript;
+    // Only process NEW results (from resultIndex) - prevents duplication
+    var int='', i;
+    for(i=e.resultIndex;i<e.results.length;i++){
+      var r=e.results[i];
+      if(r.isFinal) final_t+=r[0].transcript;
+      else int+=r[0].transcript;
     }
-    final_t=f; interim_t=int;
-    var combined=(f+int).trim();
+    interim_t=int;
+    var combined=(final_t+int).trim();
     var el=$('btr'); if(el) el.textContent=combined;
-    // Mobile: show preview box and send button
     if(pressTalk && combined){
       var tb=$('trbox'); if(tb){tb.textContent=combined;tb.className='trbox on';}
       var sn=$('sendNow'); if(sn) sn.className='send-now on';
