@@ -342,8 +342,8 @@ var isAndroid = /Android/i.test(navigator.userAgent);
 var isMobile = isIOS || isAndroid;
 var hasSR = !!(window.SpeechRecognition||window.webkitSpeechRecognition);
 var synth = window.speechSynthesis;
-// Press-to-talk only on iOS (Android supports continuous recognition)
-var pressTalk = isIOS;
+// Press-to-talk for all mobile (most reliable cross-device approach)
+var pressTalk = isMobile;
 
 // ── State ─────────────────────────────────────────────────────────────────
 var state='idle', isCompleted=false, isTouch=false;
@@ -470,10 +470,10 @@ function afterSpeak(){
   if(isCompleted) return;
   if(hasSR){
     if(pressTalk){
-      // iOS only: press-to-talk
+      // Mobile (iOS+Android): press-to-talk
       setSt('idle','マイクボタンを押して回答','押している間録音・離すと送信');
     } else {
-      // Android + Desktop: auto-start listening
+      // Desktop only: auto-start
       startListening();
     }
   } else {
@@ -534,7 +534,8 @@ function startListening(){
     recognition.start();
     if(isIOS) startMic();
     resetSil();
-    if(isAndroid) watchdogCheck();
+    // Watchdog only for desktop continuous mode
+    if(!pressTalk) watchdogCheck();
   }catch(e){
     console.warn('recognition.start failed:',e);
     isListening=false;
@@ -596,13 +597,16 @@ function ptStart(e){
   var el=$('btr'); if(el) el.textContent='';
   setSt('rec','録音中...','離すと送信されます');
   try{recognition.start();}catch(err){console.warn('start err',err);}
-  startMic();
+  if(isIOS) startMic();
 }
 function ptEnd(e){
   if(!isRec) return; e.preventDefault();
-  isRec=false; stopMic();
+  isRec=false;
+  if(isIOS) stopMic();
   setSt('idle','確認中...','');
   if(fallTimer) clearTimeout(fallTimer);
+  // Android: recognition may have already stopped itself
+  // Wait for onend, fallback timer handles the rest
   fallTimer=setTimeout(function(){
     var txt=(final_t+interim_t).trim(); interim_t='';
     if(txt) sendMsg(txt);
@@ -678,11 +682,11 @@ function doStart(){
   if(!hasSR){
     toText();
   } else if(pressTalk){
-    // iOS only: press-to-talk
+    // Mobile (iOS+Android): press-to-talk
     $('bss').textContent='マイクボタンを押している間録音・離すと送信';
   } else {
-    // Android/Desktop: mic permission handled by SpeechRecognition itself
-    // Do NOT call getUserMedia here - it conflicts with SR on Android
+    // Desktop only: auto continuous recognition
+    makeRec();
   }
 
   // Switch to interview screen immediately
