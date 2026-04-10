@@ -831,12 +831,12 @@ function sendMsg(text){
     addMsg('ai',d.reply);
     if(d.completed||d.reply.indexOf('[INTERVIEW_COMPLETE]')!==-1){
       isCompleted=true; synth.cancel();
-      speakAll(d.reply,function(){
-        setTimeout(function(){
-          $('pageInterview').classList.remove('on');
-          $('pageCompleted').classList.add('on');
-        },1500);
-      });
+      // 面接終了: TTSの完了を待たず確実に遷移する
+      speakAll(d.reply, function(){});
+      setTimeout(function(){
+        $('pageInterview').classList.remove('on');
+        $('pageCompleted').classList.add('on');
+      },3000); // 読み上げ開始から3秒後に遷移
     } else {
       speakAll(d.reply, afterSpeak);
     }
