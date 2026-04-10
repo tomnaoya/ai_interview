@@ -519,23 +519,56 @@ function unlockTTS() {
   } catch(e) {}
 }
 
-// ── TTS ───────────────────────────────────────────────────────────────────
+// ── TTS (チャンク分割でAndroid Chromeのバグを回避) ─────────────────────────
+function splitToChunks(text) {
+  // 句読点・改行で分割して短い文にする
+  const parts = text.split(/(?<=[。．！？
+])|(?<=。)|(?<=
+)/);
+  return parts.map(s=>s.trim()).filter(s=>s.length>0);
+}
+
 async function speak(text, onEnd) {
   synth.cancel();
-  const clean=cleanText(text);
+  const clean = cleanText(text);
   if(!clean){onEnd&&onEnd();return;}
   if(!voicesList.length) await loadVoices();
-  const u=new SpeechSynthesisUtterance(clean);
-  u.lang=LANG_CODE; u.rate=0.9; u.pitch=GENDER==='female'?1.1:0.85; u.volume=1.0;
-  const lp=LANG_CODE.slice(0,2);
-  const voice=voicesList.find(v=>v.lang.startsWith(lp)&&(GENDER==='female'?/female|woman|kyoko|haruka|nanami/i.test(v.name):/male|man|otoya/i.test(v.name)))
-    ||voicesList.find(v=>v.lang===LANG_CODE)||voicesList.find(v=>v.lang.startsWith(lp))||voicesList[0];
-  if(voice) u.voice=voice;
-  const rt=setInterval(()=>{if(synth.speaking){synth.pause();synth.resume();}},10000);
-  u.onstart=()=>setStatus('ai_speaking','AI面接官が話しています...','話し終わると自動でマイクがONになります');
-  u.onend=()=>{clearInterval(rt);onEnd&&onEnd();};
-  u.onerror=()=>{clearInterval(rt);onEnd&&onEnd();};
-  synth.speak(u);
+
+  const lp = LANG_CODE.slice(0,2);
+  const voice = voicesList.find(v=>v.lang.startsWith(lp)&&(GENDER==='female'?/female|woman|kyoko|haruka|nanami/i.test(v.name):/male|man|otoya/i.test(v.name)))
+    || voicesList.find(v=>v.lang===LANG_CODE)
+    || voicesList.find(v=>v.lang.startsWith(lp))
+    || voicesList[0];
+
+  const chunks = splitToChunks(clean);
+  if(chunks.length === 0){onEnd&&onEnd();return;}
+
+  setStatus('ai_speaking','AI面接官が話しています...','話し終わると自動でマイクがONになります');
+
+  let idx = 0;
+  // Android resume workaround
+  const rt = setInterval(()=>{if(synth.speaking){synth.pause();synth.resume();}}, 8000);
+
+  function speakNext() {
+    if(idx >= chunks.length){
+      clearInterval(rt);
+      onEnd&&onEnd();
+      return;
+    }
+    const u = new SpeechSynthesisUtterance(chunks[idx]);
+    u.lang = LANG_CODE;
+    u.rate = 0.9;
+    u.pitch = GENDER==='female' ? 1.1 : 0.85;
+    u.volume = 1.0;
+    if(voice) u.voice = voice;
+    u.onend = () => { idx++; speakNext(); };
+    u.onerror = (e) => {
+      console.warn('TTS chunk error:', e.error, chunks[idx]);
+      idx++; speakNext(); // エラーでも次へ進む
+    };
+    synth.speak(u);
+  }
+  speakNext();
 }
 
 // ── Mode switching ────────────────────────────────────────────────────────
