@@ -146,6 +146,8 @@
       color:#fff;box-shadow:0 0 16px rgba(16,185,129,.4);animation:mpulse 1s infinite;}
     .mic-btn.disabled{background:rgba(255,255,255,.04);color:rgba(255,255,255,.15);cursor:not-allowed;}
     @keyframes mpulse{0%,100%{box-shadow:0 0 16px rgba(16,185,129,.4)}50%{box-shadow:0 0 28px rgba(16,185,129,.7)}}
+    .mic-btn{touch-action:none;user-select:none;-webkit-user-select:none;}
+    .mic-btn.listening{transform:scale(1.1);}
     /* Text input (fallback / always available) */
     .text-input-wrap{flex:1;display:flex;gap:6px;align-items:center;}
     .text-input{flex:1;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);
@@ -351,9 +353,16 @@
 
         <!-- Input bar: voice mode -->
         <div class="input-bar" id="barVoice">
-          <button class="mic-btn idle" id="micBtn" onclick="toggleMic()">
+          <button class="mic-btn idle" id="micBtn"
+            onclick="if(!pressTalkMode)toggleMic()"
+            ontouchstart="if(pressTalkMode)startPressRecord(event)"
+            ontouchend="if(pressTalkMode)stopPressRecord(event)"
+            ontouchcancel="if(pressTalkMode)cancelPressRecord(event)"
+            onmousedown="if(pressTalkMode&&!isMobile)startPressRecord(event)"
+            onmouseup="if(pressTalkMode&&!isMobile)stopPressRecord(event)">
             <i class="fas fa-microphone"></i>
           </button>
+          <div id="pressTalkHint" style="display:none;font-size:10px;color:rgba(255,255,255,.4);text-align:center;margin-top:2px">押している間録音</div>
           <div class="bar-info">
             <div class="vstatus" id="vstatus">AIが話し終わるまでお待ちください</div>
             <div class="vsub" id="vsub">音声認識は自動で開始されます</div>
@@ -393,10 +402,13 @@ const TOKEN = "{{ interview.token }}";
 const GENDER = "{{ job.avatar_gender or 'female' }}";
 const LANG_CODE = "{{ 'en-US' if job.interview_language == 'en' else 'vi-VN' if job.interview_language == 'vi' else 'ja-JP' }}";
 
-// Detect speech recognition support
+// Detect environment
 const hasSpeechRecognition = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
 const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+// Mobile uses press-to-talk, desktop uses auto-detect silence
+const pressTalkMode = isMobile;
 
 let state = 'idle';
 let recognition = null;
@@ -408,7 +420,8 @@ let isCompleted = false;
 let audioCtx=null, analyser=null, micStream=null, animFrame=null;
 let mouthAnim = null;
 let voicesList = [];
-let useVoiceMode = hasSpeechRecognition && !isSafari; // Safari STT不安定のためデフォルトOFF
+let useVoiceMode = hasSpeechRecognition; // 全ブラウザで音声を試みる
+let isRecording = false; // press-to-talk state
 
 // ── Voice loading ─────────────────────────────────────────────────────────
 function loadVoices() {
@@ -544,18 +557,31 @@ function setupRecognition() {
   if(!hasSpeechRecognition) return false;
   const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
   recognition=new SR();
-  recognition.lang=LANG_CODE; recognition.continuous=true; recognition.interimResults=true;
+  recognition.lang=LANG_CODE;
+  recognition.continuous=pressTalkMode ? false : true;
+  recognition.interimResults=true;
   recognition.onresult=e=>{
     let interim='';
     for(let i=e.resultIndex;i<e.results.length;i++){
       const t=e.results[i][0].transcript;
       if(e.results[i].isFinal)finalTranscript+=t;else interim+=t;
     }
-    document.getElementById('vtranscript').textContent=finalTranscript+interim;
-    resetSilence();
+    const el=document.getElementById('vtranscript');
+    if(el) el.textContent=finalTranscript+interim;
+    if(!pressTalkMode) resetSilence();
   };
-  recognition.onend=()=>{if(state==='listening'&&!isCompleted)try{recognition.start();}catch(e){}};
-  recognition.onerror=e=>{if(e.error!=='no-speech')console.warn('STT:',e.error);};
+  recognition.onend=()=>{
+    if(!pressTalkMode && state==='listening'&&!isCompleted)
+      try{recognition.start();}catch(e){}
+  };
+  recognition.onerror=e=>{
+    if(e.error==='not-allowed'){
+      console.warn('Mic permission denied');
+      useVoiceMode=false; switchToText();
+    } else if(e.error!=='no-speech') {
+      console.warn('STT:',e.error);
+    }
+  };
   return true;
 }
 function startListening(){
@@ -629,15 +655,19 @@ function stopMicMeter(){
 function afterAISpeaks(){
   if(isCompleted) return;
   if(useVoiceMode) {
-    startListening();
+    if(pressTalkMode) {
+      // Mobile: show hint, don't auto-start (needs gesture)
+      setStatus('idle','マイクボタンを押して回答してください','押している間録音・離すと送信');
+      const hint = document.getElementById('pressTalkHint');
+      if(hint) hint.style.display='block';
+    } else {
+      startListening();
+    }
   } else {
     setStatus('idle','回答を入力してください','テキストボックスに入力して送信ボタンを押してください');
-    // iOS: scroll to bottom so input is visible above keyboard
     setTimeout(() => {
       const msgs = document.getElementById('msgs');
       if(msgs) msgs.scrollTop = msgs.scrollHeight;
-      const inp = document.getElementById('textInput');
-      if(inp) inp.focus();
     }, 400);
   }
 }
@@ -655,7 +685,8 @@ async function startInterview(){
   // Setup input mode
   if(useVoiceMode){
     if(!setupRecognition()) useVoiceMode=false;
-    if(useVoiceMode){
+    if(useVoiceMode && !pressTalkMode){
+      // Desktop: request mic permission upfront
       try{await navigator.mediaDevices.getUserMedia({audio:true});}
       catch(e){useVoiceMode=false;}
     }
@@ -663,8 +694,11 @@ async function startInterview(){
   if(!useVoiceMode){
     document.getElementById('barVoice').style.display='none';
     document.getElementById('barText').style.display='flex';
-    if(hasSpeechRecognition&&!isSafari)
-      document.getElementById('voiceToggle').style.display='inline';
+    document.getElementById('voiceToggle').style.display='none';
+  } else if(pressTalkMode) {
+    // Mobile voice mode: show press-to-talk hint
+    document.getElementById('pressTalkHint').style.display='block';
+    document.getElementById('vsub').textContent='マイクボタンを押している間録音・離すと送信';
   }
 
   let data;
@@ -687,6 +721,48 @@ async function startInterview(){
   document.getElementById('sc-interview').classList.add('active');
   appendMsg('ai', data.greeting);
   speak(data.greeting, afterAISpeaks);
+}
+
+// ── Press-to-talk ─────────────────────────────────────────────────────────
+function startPressRecord(e) {
+  e.preventDefault();
+  if(state==='ai_speaking'||state==='thinking'||isCompleted) return;
+  if(!recognition && !setupRecognition()) return;
+  isRecording = true;
+  finalTranscript = '';
+  document.getElementById('vtranscript').textContent = '';
+  document.getElementById('pressTalkHint').style.display = 'none';
+  setStatus('listening','録音中...','離すと送信されます');
+  try { recognition.start(); } catch(err) {
+    // Already started, stop and restart
+    try { recognition.stop(); } catch(e2) {}
+    setTimeout(() => { try { recognition.start(); } catch(e3) {} }, 200);
+  }
+  startMicMeter();
+}
+
+function stopPressRecord(e) {
+  e.preventDefault();
+  if(!isRecording) return;
+  isRecording = false;
+  try { recognition.stop(); } catch(err) {}
+  stopMicMeter();
+  const txt = finalTranscript.trim();
+  if(txt) {
+    sendMsg(txt);
+  } else {
+    setStatus('idle','マイクボタンを押して回答してください','押している間録音・離すと送信');
+    const hint = document.getElementById('pressTalkHint');
+    if(hint) hint.style.display='block';
+  }
+}
+
+function cancelPressRecord(e) {
+  e.preventDefault();
+  isRecording = false;
+  try { recognition.stop(); } catch(err) {}
+  stopMicMeter();
+  setStatus('idle','マイクボタンを押して回答してください','押している間録音・離すと送信');
 }
 
 // ── Send message ──────────────────────────────────────────────────────────
