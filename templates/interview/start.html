@@ -162,6 +162,11 @@
     .bar-info{flex:1;}
     .vstatus{font-size:12px;font-weight:600;color:rgba(255,255,255,.85);}
     .vsub{font-size:10px;color:rgba(255,255,255,.35);margin-top:1px;}
+    .send-btn:not(:disabled){background:var(--primary);box-shadow:0 2px 12px rgba(79,70,229,.4);}
+    /* iOS: prevent zoom on input focus */
+    @media (max-width:640px){
+      .text-input{font-size:16px !important;}
+    }
     .vtranscript{font-size:11px;color:rgba(255,255,255,.6);
       font-style:italic;margin-top:2px;min-height:14px;}
     .waveform{display:flex;align-items:center;gap:2px;height:24px;}
@@ -486,6 +491,20 @@ function removeTyping(){
   if(t){t.remove();const msgs=document.getElementById('msgs');msgs.scrollTop=msgs.scrollHeight;}
 }
 
+// ── TTS unlock (iOS Safari requires user-gesture-triggered speak) ─────────
+function unlockTTS() {
+  try {
+    const u = new SpeechSynthesisUtterance('');
+    u.volume = 0; u.rate = 10;
+    synth.speak(u);
+  } catch(e) {}
+  // Also unlock AudioContext for mic meter
+  try {
+    const ctx = new AudioContext();
+    ctx.resume().then(() => ctx.close());
+  } catch(e) {}
+}
+
 // ── TTS ───────────────────────────────────────────────────────────────────
 async function speak(text, onEnd) {
   synth.cancel();
@@ -609,11 +628,17 @@ function stopMicMeter(){
 // ── After AI speaks ───────────────────────────────────────────────────────
 function afterAISpeaks(){
   if(isCompleted) return;
-  if(useVoiceMode) startListening();
-  else {
-    setStatus('idle','回答を入力してください','テキストボックスに入力してEnterで送信');
-    const inp=document.getElementById('textInput');
-    if(inp) setTimeout(()=>inp.focus(),300);
+  if(useVoiceMode) {
+    startListening();
+  } else {
+    setStatus('idle','回答を入力してください','テキストボックスに入力して送信ボタンを押してください');
+    // iOS: scroll to bottom so input is visible above keyboard
+    setTimeout(() => {
+      const msgs = document.getElementById('msgs');
+      if(msgs) msgs.scrollTop = msgs.scrollHeight;
+      const inp = document.getElementById('textInput');
+      if(inp) inp.focus();
+    }, 400);
   }
 }
 
@@ -621,6 +646,9 @@ function afterAISpeaks(){
 async function startInterview(){
   const btn=document.getElementById('startBtn');
   btn.disabled=true; btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> 開始中...';
+
+  // iOS requires TTS unlock via user gesture - must be synchronous before any await
+  unlockTTS();
 
   await loadVoices();
 
