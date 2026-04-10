@@ -349,7 +349,8 @@ var pressTalk = isIOS;
 var state='idle', isCompleted=false, isTouch=false;
 var recognition=null, voices=[];
 var final_t='', interim_t='', isRec=false;
-var silTimer=null, mouthTimer=null;
+var silTimer=null, mouthTimer=null, watchTimer=null;
+var isListening=false; // prevent double-start
 var totalQ=0, turnN=0;
 var audioCtx=null, analyser=null, micStream=null, rafId=null;
 
@@ -507,7 +508,10 @@ function makeRec(){
       else setSt('idle','マイクボタンを押して回答','押している間録音・離すと送信');
     } else {
       // Android/Desktop: recreate and restart via startListening()
-      if(state==='rec'&&!isCompleted) startListening();
+      if(state==='rec'&&!isCompleted){
+        isListening=false; // allow restart
+        startListening();
+      }
     }
   };
   recognition.onerror=function(e){
@@ -518,26 +522,28 @@ function makeRec(){
 }
 
 function startListening(){
-  if(isCompleted) return;
-  // Recreate recognition every time (Android Chrome reuse causes silent failure)
+  if(isCompleted||isListening) return;
+  clearWatchdog();
+  isListening=true;
   recognition=null;
-  if(!makeRec()) return;
+  if(!makeRec()){isListening=false;return;}
   final_t=''; interim_t='';
   var el=$('btr'); if(el) el.textContent='';
   setSt('rec','お話しください...','3秒間の沈黙で自動送信されます');
   try{
     recognition.start();
-    // Only start mic meter on iOS (Android: SR manages mic exclusively)
     if(isIOS) startMic();
     resetSil();
     if(isAndroid) watchdogCheck();
   }catch(e){
     console.warn('recognition.start failed:',e);
+    isListening=false;
     setSt('idle','もう一度お試しください','');
   }
 }
 function stopListening(){
-  clearSil();
+  isListening=false;
+  clearSil(); clearWatchdog();
   try{if(recognition) recognition.stop();}catch(e){}
   recognition=null;
   if(isIOS) stopMic();
@@ -552,20 +558,31 @@ function resetSil(){
   },3000);
 }
 function watchdogCheck(){
-  // Android: if still in rec state after 8s with no input, restart SR
-  setTimeout(function(){
+  clearWatchdog();
+  watchTimer=setTimeout(function(){
+    watchTimer=null;
     if(state==='rec'&&!isCompleted&&!pressTalk){
       console.log('Watchdog: restarting SR');
+      isListening=false; // allow restart
       stopListening();
-      startListening();
+      setTimeout(function(){startListening();},300);
     }
   },8000);
+}
+function clearWatchdog(){
+  if(watchTimer){clearTimeout(watchTimer);watchTimer=null;}
 }
 function clearSil(){if(silTimer){clearTimeout(silTimer);silTimer=null;}}
 function toggleMic(){
   if(state==='spk'||state==='thn'||isCompleted) return;
-  if(state==='rec'){stopListening();var t=final_t.trim();if(t) sendMsg(t);else setSt('idle','待機中','');}
-  else startListening();
+  if(state==='rec'){
+    isListening=false;
+    stopListening();
+    var t=final_t.trim();if(t) sendMsg(t);else setSt('idle','待機中','');
+  } else {
+    isListening=false;
+    startListening();
+  }
 }
 
 // ── Press-to-talk ─────────────────────────────────────────────────────────
@@ -698,6 +715,10 @@ function doStart(){
 // ── SEND ─────────────────────────────────────────────────────────────────
 function sendMsg(text){
   if(isCompleted) return;
+  // Stop any active recognition and clear timers
+  isListening=false;
+  clearSil(); clearWatchdog();
+  try{if(recognition){recognition.stop();recognition=null;}}catch(e){}
   setSt('thn','考え中...','AIが回答を生成しています');
   addMsg('user',text);
   var btr=$('btr'); if(btr) btr.textContent='';
