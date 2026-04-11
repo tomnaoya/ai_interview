@@ -57,6 +57,7 @@ SEED_GRADE_CRITERIA = [
 ]
 
 SEED_KEYWORDS = ["協調性", "AI", "自己責任", "協力", "積極的に", "挑戦", "成長", "IT"]
+SEED_PENALTY_TRAITS = ["他人のせいにする", "他責", "他者の悪口を言う"]
 
 
 @app.on_event("startup")
@@ -136,6 +137,22 @@ async def startup_event():
         db.add(job)
         db.commit()
         print(f"✅ Job created: {job.title}")
+    else:
+        # 既存ジョブのデータが消えていた場合は復元する
+        updated = False
+        if not job.ai_questions:
+            job.ai_questions = SEED_QUESTIONS
+            job.ai_max_turns = len(SEED_QUESTIONS)
+            updated = True
+        if not job.keywords:
+            job.keywords = SEED_KEYWORDS
+            updated = True
+        if not job.penalty_traits:
+            job.penalty_traits = SEED_PENALTY_TRAITS
+            updated = True
+        if updated:
+            db.commit()
+            print(f"✅ Job restored: {job.title}")
 
     db.close()
 
