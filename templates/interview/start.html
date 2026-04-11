@@ -379,7 +379,7 @@ var audioCtx=null, analyser=null, micStream=null, rafId=null;
 // ── Helpers ───────────────────────────────────────────────────────────────
 function $(id){return document.getElementById(id)}
 function cleanTxt(t){
-  return (t||'').replace('[INTERVIEW_COMPLETE]','')
+  return (t||'').replace(/\[INTERVIEW_COMPLETE\]/g,'').replace('INTERVIEWCOMPLETE','')
     .replace(/\*\*(.+?)\*\*/g,'$1').replace(/\*(.+?)\*/g,'$1')
     .replace(/#{1,6} /g,'').replace(/^[・\-] /gm,'')
     .replace(/[*_`#~]/g,'').trim();
@@ -840,19 +840,22 @@ function sendMsg(text){
     clearTimeout(tid); isSending=false; hideType();
     if(!r.ok){showErr('サーバーエラー('+r.status+'): '+r.text);setSt('idle','再試行できます','マイクボタンを押して回答');return;}
     var d=JSON.parse(r.text);
+    var isEnd=d.completed||(d.reply.indexOf('[INTERVIEW_COMPLETE]')!==-1);
     addMsg('ai',d.reply);
-    if(d.completed||d.reply.indexOf('[INTERVIEW_COMPLETE]')!==-1){
+    if(isEnd){
       isCompleted=true;
       // 面接終了: TTSを読んでから確実に遷移
+      var gone=false;
       function goCompleted(){
+        if(gone) return; gone=true;
         $('pageInterview').classList.remove('on');
         $('pageCompleted').classList.add('on');
       }
       speakAll(d.reply, function(){
         setTimeout(goCompleted, 500);
       });
-      // フェイルセーフ: 10秒後に強制遷移
-      setTimeout(goCompleted, 10000);
+      // フェイルセーフ: 8秒後に強制遷移
+      setTimeout(goCompleted, 8000);
     } else {
       speakAll(d.reply, afterSpeak);
     }
