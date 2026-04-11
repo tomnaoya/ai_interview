@@ -1,3 +1,4 @@
+import re
 import os
 import json
 from datetime import datetime
@@ -288,9 +289,10 @@ async def send_message(token: str, request: Request, db: Session = Depends(get_d
         print(f"[ERROR] All models failed. Last: {detail}")
         raise HTTPException(500, f"AI処理失敗: {detail}")
 
-    completed = "[INTERVIEW_COMPLETE]" in reply
-    # Remove the tag from the reply before saving and sending to client
-    clean_reply = reply.replace("[INTERVIEW_COMPLETE]", "").strip()
+    # タグのバリエーションを全て検出・除去（括弧あり/なし、アンダースコアあり/なし）
+    _tag_pattern = r'[\[]?INTERVIEW[_]?COMPLETE[\]]?'
+    completed = bool(re.search(_tag_pattern, reply))
+    clean_reply = re.sub(_tag_pattern, '', reply).strip()
 
     db.add(models.InterviewMessage(interview_id=interview.id, role="assistant", content=clean_reply))
     db.commit()
