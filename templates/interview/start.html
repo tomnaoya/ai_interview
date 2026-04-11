@@ -3,264 +3,221 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-  <title>AI面接</title>
+  <title>AI面接 - {{ job.company.name }}</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <style>
-    *{box-sizing:border-box;margin:0;padding:0}
-    :root{--p:#4f46e5;--g:#10b981;--r:#ef4444;--y:#f59e0b}
-    html,body{height:100%;overflow:hidden}
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{--p:#4f46e5;--g:#10b981;--r:#ef4444;--y:#f59e0b;--bg:#0d0d1a;}
+    html,body{height:100%;overflow:hidden;}
     body{font-family:'Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif;
-      background:#0d0d1a;color:#fff;display:flex;align-items:center;
-      justify-content:center;height:100dvh}
+      background:var(--bg);color:#fff;height:100dvh;overflow:hidden;}
     .bg{position:fixed;inset:0;z-index:0;
-      background:radial-gradient(ellipse at 20% 50%,rgba(79,70,229,.2),transparent 55%),
-                 radial-gradient(ellipse at 80% 20%,rgba(124,58,237,.15),transparent 50%),#0d0d1a}
+      background:radial-gradient(ellipse at 20% 50%,rgba(79,70,229,.22),transparent 55%),
+                 radial-gradient(ellipse at 80% 20%,rgba(124,58,237,.15),transparent 50%),var(--bg);}
+    .bg-grid{position:fixed;inset:0;z-index:0;
+      background-image:linear-gradient(rgba(255,255,255,.02) 1px,transparent 1px),
+                       linear-gradient(90deg,rgba(255,255,255,.02) 1px,transparent 1px);
+      background-size:48px 48px;}
 
-    /* ── CONSENT ── */
-    #pageConsent{position:relative;z-index:1;width:100%;max-width:440px;padding:24px 16px}
-    .logo{width:64px;height:64px;border-radius:16px;
+    /* ── CONSENT ─────────────────────────────────────────────────── */
+    #pageConsent{
+      position:fixed;inset:0;z-index:1;
+      display:flex;flex-direction:column;
+      align-items:center;justify-content:center;
+      padding:20px;
+    }
+    .c-logo{width:72px;height:72px;border-radius:18px;
       background:linear-gradient(135deg,var(--p),#7c3aed);
       display:flex;align-items:center;justify-content:center;
-      font-size:28px;margin:0 auto 14px}
-    h1{text-align:center;font-size:20px;margin-bottom:4px}
-    .sub{text-align:center;font-size:13px;color:rgba(255,255,255,.4);margin-bottom:24px}
-    .card{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);
-      border-radius:14px;padding:20px}
-    .ci{display:flex;flex-direction:column;gap:10px;margin-bottom:20px}
-    .ci-row{display:flex;align-items:center;gap:10px;font-size:13px}
-    .ci-icon{width:28px;height:28px;border-radius:7px;background:rgba(79,70,229,.3);
-      display:flex;align-items:center;justify-content:center;font-size:12px;
-      color:#818cf8;flex-shrink:0}
-    .ck{display:flex;align-items:flex-start;gap:8px;margin-bottom:16px;cursor:pointer}
-    .ck input{width:15px;height:15px;margin-top:2px;accent-color:var(--p);flex-shrink:0}
-    .ck span{font-size:12px;color:rgba(255,255,255,.6);line-height:1.6}
-    #btnStart{width:100%;padding:13px;border-radius:10px;
+      font-size:32px;margin-bottom:16px;box-shadow:0 0 30px rgba(79,70,229,.3);}
+    .c-title{font-size:22px;font-weight:700;margin-bottom:4px;text-align:center;}
+    .c-sub{font-size:13px;color:rgba(255,255,255,.45);margin-bottom:24px;text-align:center;}
+    .c-card{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);
+      border-radius:16px;padding:24px;width:100%;max-width:460px;}
+    .ci{display:flex;flex-direction:column;gap:10px;margin-bottom:20px;}
+    .ci-row{display:flex;align-items:center;gap:10px;font-size:13px;color:rgba(255,255,255,.8);}
+    .ci-icon{width:30px;height:30px;border-radius:8px;background:rgba(79,70,229,.25);
+      display:flex;align-items:center;justify-content:center;font-size:12px;color:#818cf8;flex-shrink:0;}
+    .c-check{display:flex;align-items:flex-start;gap:8px;margin-bottom:18px;cursor:pointer;}
+    .c-check input{width:15px;height:15px;margin-top:2px;accent-color:var(--p);flex-shrink:0;}
+    .c-check span{font-size:12px;color:rgba(255,255,255,.6);line-height:1.6;}
+    #btnStart{width:100%;padding:13px;border-radius:11px;
       background:linear-gradient(135deg,var(--p),#7c3aed);
       color:#fff;border:none;font-size:15px;font-weight:600;cursor:pointer;
-      display:flex;align-items:center;justify-content:center;gap:8px}
-    #btnStart:disabled{opacity:.35;cursor:not-allowed}
-    .emsg{background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);
+      display:flex;align-items:center;justify-content:center;gap:8px;}
+    #btnStart:disabled{opacity:.35;cursor:not-allowed;}
+    .emsg{background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);
       border-radius:8px;padding:10px 14px;font-size:12px;color:#fca5a5;
-      margin-top:10px;display:none}
-    .emsg.on{display:block}
+      margin-top:10px;display:none;}
+    .emsg.on{display:block;}
 
-    /* ── INTERVIEW ── */
-    #pageInterview{display:none;position:fixed;inset:0;z-index:1;
-      flex-direction:column;overflow:hidden}
-    #pageInterview.on{display:flex}
+    /* ── INTERVIEW ───────────────────────────────────────────────── */
+    #pageInterview{
+      position:fixed;inset:0;z-index:1;
+      display:none;flex-direction:column;overflow:hidden;
+    }
+    #pageInterview.on{display:flex;}
 
     /* header */
     .hdr{display:flex;align-items:center;justify-content:space-between;
-      padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.07);flex-shrink:0}
-    .hdr-left{display:flex;align-items:center;gap:8px}
-    .hdr-ico{width:26px;height:26px;border-radius:5px;
-      background:rgba(255,255,255,.08);display:flex;align-items:center;
-      justify-content:center;font-size:11px;color:rgba(255,255,255,.5)}
-    .hdr-name{font-size:12px;color:rgba(255,255,255,.7)}
-    .hdr-job{font-size:10px;color:rgba(255,255,255,.35)}
+      padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.07);flex-shrink:0;}
+    .hdr-co{display:flex;align-items:center;gap:8px;}
+    .hdr-ico{width:26px;height:26px;border-radius:5px;background:rgba(255,255,255,.08);
+      display:flex;align-items:center;justify-content:center;font-size:11px;color:rgba(255,255,255,.5);}
+    .hdr-name{font-size:12px;color:rgba(255,255,255,.7);}
+    .hdr-job{font-size:10px;color:rgba(255,255,255,.35);}
     .pill{display:flex;align-items:center;gap:6px;padding:4px 11px;
-      border-radius:99px;background:rgba(255,255,255,.07);font-size:11px;font-weight:600}
-    .dot{width:6px;height:6px;border-radius:50%;background:#555}
-    .dot.g{background:var(--g);animation:dp 1s infinite}
-    .dot.p{background:var(--p);animation:dp .7s infinite}
-    .dot.y{background:var(--y);animation:dp .5s infinite}
+      border-radius:99px;background:rgba(255,255,255,.07);font-size:11px;font-weight:600;}
+    .sdot{width:6px;height:6px;border-radius:50%;background:#555;}
+    .sdot.g{background:var(--g);animation:dp 1s infinite;}
+    .sdot.p{background:var(--p);animation:dp .7s infinite;}
+    .sdot.y{background:var(--y);animation:dp .5s infinite;}
     @keyframes dp{0%,100%{opacity:1}50%{opacity:.3}}
 
-    /* main */
-    .iv-body{flex:1;display:flex;gap:0;min-height:0;overflow:hidden}
+    /* main body */
+    .iv-body{flex:1;display:flex;gap:0;min-height:0;overflow:hidden;}
 
-    /* avatar */
+    /* avatar column */
     .av-col{width:200px;flex-shrink:0;display:flex;flex-direction:column;
       align-items:center;gap:12px;padding:16px 10px;
-      border-right:1px solid rgba(255,255,255,.05)}
-    .av-wrap{position:relative;width:150px;height:150px}
-    .av-ring{position:absolute;inset:-4px;border-radius:50%;
-      border:2px solid transparent;transition:border-color .3s}
-    .av-ring.on{border-color:rgba(79,70,229,.6);animation:spin 4s linear infinite}
-    @keyframes spin{to{transform:rotate(360deg)}}
-    .av-waves{position:absolute;inset:0;pointer-events:none}
+      border-right:1px solid rgba(255,255,255,.05);}
+    .av-wrap{position:relative;width:150px;height:150px;}
+    .av-ring{position:absolute;inset:-5px;border-radius:50%;
+      border:2px solid rgba(79,70,229,0);transition:border-color .4s;}
+    .av-ring.on{border-color:rgba(79,70,229,.65);animation:rspin 4s linear infinite;}
+    @keyframes rspin{to{transform:rotate(360deg)}}
+    .av-waves{position:absolute;inset:0;pointer-events:none;}
     .wv{position:absolute;inset:0;border-radius:50%;
-      border:2px solid rgba(79,70,229,.2);opacity:0}
-    .speaking .wv:nth-child(1){animation:wo 1.8s 0s infinite}
-    .speaking .wv:nth-child(2){animation:wo 1.8s .5s infinite}
-    .speaking .wv:nth-child(3){animation:wo 1.8s 1s infinite}
-    @keyframes wo{0%{transform:scale(1);opacity:.5}100%{transform:scale(1.6);opacity:0}}
+      border:2px solid rgba(79,70,229,.22);opacity:0;}
+    .speaking .wv:nth-child(1){animation:wo 1.8s .0s infinite;}
+    .speaking .wv:nth-child(2){animation:wo 1.8s .5s infinite;}
+    .speaking .wv:nth-child(3){animation:wo 1.8s 1s infinite;}
+    @keyframes wo{0%{transform:scale(1);opacity:.5}100%{transform:scale(1.55);opacity:0}}
     .av-face{width:150px;height:150px;border-radius:50%;overflow:hidden;
-      border:2px solid rgba(79,70,229,.3);background:#1a1035}
-    .av-face svg{width:100%;height:100%}
-    .av-name{font-size:13px;font-weight:600}
-    .av-org{font-size:10px;color:rgba(255,255,255,.35);text-align:center}
-    .vm{width:110px;height:4px;background:rgba(255,255,255,.08);
-      border-radius:99px;overflow:hidden}
-    .vm-f{height:100%;border-radius:99px;
-      background:linear-gradient(90deg,var(--g),#34d399);width:0;transition:width .06s}
+      border:2px solid rgba(79,70,229,.3);background:#1a1035;}
+    .av-face svg{width:100%;height:100%;}
+    .av-name{font-size:13px;font-weight:600;color:rgba(255,255,255,.9);}
+    .av-org{font-size:10px;color:rgba(255,255,255,.35);text-align:center;}
+    .vmbar{width:120px;height:4px;background:rgba(255,255,255,.08);border-radius:99px;overflow:hidden;}
+    .vmfill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--g),#34d399);width:0%;transition:width .06s;}
 
-    /* chat */
-    .chat-col{flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden;padding:10px 12px 10px}
-    .msgs{flex:1;overflow-y:auto;display:flex;flex-direction:column;
-      justify-content:flex-end;gap:8px;min-height:0}
-    .msgs::-webkit-scrollbar{width:3px}
-    .msgs::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:2px}
-    .mi{display:flex;flex-direction:column;gap:8px}
-    .msg{display:flex;gap:7px}
-    .msg.u{flex-direction:row-reverse}
+    /* chat column */
+    .chat-col{flex:1;display:flex;flex-direction:column;
+      gap:8px;min-height:0;overflow:hidden;padding:10px 12px;}
+    .msgs{flex:1;overflow-y:auto;overflow-x:hidden;
+      display:flex;flex-direction:column;justify-content:flex-end;
+      gap:8px;min-height:0;}
+    .msgs::-webkit-scrollbar{width:3px;}
+    .msgs::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:2px;}
+    .mi{display:flex;flex-direction:column;gap:8px;}
+    .msg{display:flex;gap:7px;}
+    .msg.a{flex-direction:row;}
+    .msg.u{flex-direction:row-reverse;}
     .mav{width:26px;height:26px;border-radius:50%;display:flex;
-      align-items:center;justify-content:center;font-size:11px;flex-shrink:0}
-    .msg.a .mav{background:linear-gradient(135deg,var(--p),#7c3aed)}
-    .msg.u .mav{background:rgba(255,255,255,.1)}
-    .mb{max-width:86%}
-    .ml{font-size:10px;color:rgba(255,255,255,.3);margin-bottom:2px}
-    .msg.u .ml{text-align:right}
-    .mt{padding:9px 13px;border-radius:12px;font-size:13px;line-height:1.75}
-    .msg.a .mt{background:rgba(79,70,229,.18);border:1px solid rgba(79,70,229,.2);border-top-left-radius:3px}
-    .msg.u .mt{background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.07);border-top-right-radius:3px}
-    .typing .mt{padding:12px 15px}
-    .td{display:flex;gap:4px;align-items:center}
-    .td span{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.4);animation:td .9s infinite}
-    .td span:nth-child(2){animation-delay:.2s}
-    .td span:nth-child(3){animation-delay:.4s}
+      align-items:center;justify-content:center;font-size:11px;flex-shrink:0;}
+    .msg.a .mav{background:linear-gradient(135deg,var(--p),#7c3aed);}
+    .msg.u .mav{background:rgba(255,255,255,.09);}
+    .mb{max-width:86%;}
+    .ml{font-size:10px;color:rgba(255,255,255,.35);margin-bottom:2px;}
+    .msg.u .ml{text-align:right;}
+    .mt{padding:9px 13px;border-radius:12px;font-size:13px;line-height:1.75;}
+    .msg.a .mt{background:rgba(79,70,229,.18);border:1px solid rgba(79,70,229,.22);border-top-left-radius:3px;}
+    .msg.u .mt{background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.07);border-top-right-radius:3px;}
+    .typing .mt{padding:12px 15px;}
+    .td{display:flex;gap:4px;align-items:center;}
+    .td span{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.4);animation:td .9s infinite;}
+    .td span:nth-child(2){animation-delay:.2s;}
+    .td span:nth-child(3){animation-delay:.4s;}
     @keyframes td{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-6px)}}
 
-    /* input bar */
+    /* voice input bar */
     .ibar{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);
       border-radius:12px;padding:10px 12px;display:flex;align-items:center;
-      gap:10px;flex-shrink:0;margin-top:8px}
+      gap:10px;flex-shrink:0;}
     .mbtn{width:44px;height:44px;border-radius:50%;border:none;cursor:pointer;
-      display:flex;align-items:center;justify-content:center;
-      font-size:18px;flex-shrink:0;transition:all .2s;
-      -webkit-user-select:none;user-select:none;touch-action:none}
-    .mbtn.idle{background:rgba(255,255,255,.08);color:rgba(255,255,255,.4)}
+      display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;
+      touch-action:none;-webkit-user-select:none;user-select:none;transition:all .2s;}
+    .mbtn.idle{background:rgba(255,255,255,.08);color:rgba(255,255,255,.4);}
     .mbtn.rec{background:linear-gradient(135deg,var(--g),#059669);color:#fff;
-      transform:scale(1.1);box-shadow:0 0 20px rgba(16,185,129,.5)}
-    .mbtn.off{background:rgba(255,255,255,.04);color:rgba(255,255,255,.15);cursor:not-allowed}
-    .bi{flex:1}
-    .bs{font-size:12px;font-weight:600;color:rgba(255,255,255,.85)}
-    .bss{font-size:10px;color:rgba(255,255,255,.35);margin-top:2px}
-    .btr{font-size:11px;color:rgba(255,255,255,.55);font-style:italic;margin-top:3px;min-height:14px}
-    .wf{display:flex;align-items:center;gap:2px;height:22px}
-    .wb{width:2px;height:3px;border-radius:2px;background:rgba(255,255,255,.15);transition:height .06s}
-    .wf.r .wb{background:var(--g)}
+      box-shadow:0 0 18px rgba(16,185,129,.45);transform:scale(1.08);}
+    .mbtn.off{background:rgba(255,255,255,.04);color:rgba(255,255,255,.15);cursor:not-allowed;}
+    .bi{flex:1;}
+    .bs{font-size:12px;font-weight:600;color:rgba(255,255,255,.85);}
+    .bss{font-size:10px;color:rgba(255,255,255,.35);margin-top:2px;}
+    .btr{font-size:11px;color:rgba(255,255,255,.6);font-style:italic;margin-top:3px;min-height:14px;}
+    .wf{display:flex;align-items:center;gap:2px;height:22px;}
+    .wb{width:2px;height:3px;border-radius:2px;background:rgba(255,255,255,.15);transition:height .06s;}
+    .wf.r .wb{background:var(--g);}
+    .sw{font-size:10px;color:rgba(255,255,255,.3);cursor:pointer;text-decoration:underline;white-space:nowrap;}
 
-    /* text input (fallback) */
+    /* transcript preview + send button (mobile) */
+    .trbox{width:100%;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);
+      border-radius:8px;padding:8px 12px;font-size:12px;color:rgba(255,255,255,.85);
+      min-height:36px;max-height:80px;overflow-y:auto;line-height:1.5;display:none;word-break:break-all;}
+    .trbox.on{display:block;}
+    .sendnow{width:100%;padding:9px;border-radius:8px;
+      background:linear-gradient(135deg,var(--g),#059669);color:#fff;border:none;
+      font-size:13px;font-weight:600;cursor:pointer;display:none;
+      align-items:center;justify-content:center;gap:6px;}
+    .sendnow.on{display:flex;}
+
+    /* text input bar (fallback) */
     .tbar{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);
-      border-radius:12px;padding:8px 10px;display:flex;align-items:center;
-      gap:8px;flex-shrink:0;margin-top:8px}
+      border-radius:12px;padding:8px 10px;display:flex;align-items:center;gap:8px;flex-shrink:0;}
     .ti{flex:1;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);
-      border-radius:8px;padding:9px 12px;color:#fff;font-size:16px;
-      font-family:inherit;resize:none;min-height:42px;max-height:100px;
-      outline:none;line-height:1.5}
-    .ti::placeholder{color:rgba(255,255,255,.3)}
-    .ti:focus{border-color:rgba(79,70,229,.5)}
-    .sbtn{width:40px;height:40px;border-radius:50%;background:var(--p);
-      color:#fff;border:none;cursor:pointer;display:flex;align-items:center;
-      justify-content:center;font-size:15px}
-    .sbtn:disabled{opacity:.3;cursor:not-allowed}
-    .sw{font-size:10px;color:rgba(255,255,255,.3);cursor:pointer;
-      text-decoration:underline;white-space:nowrap}
+      border-radius:8px;padding:9px 12px;color:#fff;font-size:16px;font-family:inherit;
+      resize:none;min-height:42px;max-height:100px;outline:none;line-height:1.5;}
+    .ti::placeholder{color:rgba(255,255,255,.3);}
+    .ti:focus{border-color:rgba(79,70,229,.5);}
+    .sbtn{width:40px;height:40px;border-radius:50%;background:var(--p);color:#fff;
+      border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:15px;}
+    .sbtn:disabled{opacity:.3;cursor:not-allowed;}
+    .err-box{background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);
+      border-radius:8px;padding:8px 12px;font-size:12px;color:#fca5a5;display:none;flex-shrink:0;}
+    .err-box.on{display:block;}
 
     /* completed */
-    #pageCompleted{display:none;position:fixed;inset:0;z-index:1;
-      flex-direction:column;align-items:center;justify-content:center;
-      text-align:center;padding:24px}
-    #pageCompleted.on{display:flex}
-    .ci2{font-size:64px;color:var(--g);margin-bottom:16px}
-    .ct{font-size:22px;font-weight:700;margin-bottom:10px}
-    .cb{font-size:14px;color:rgba(255,255,255,.55);line-height:1.9;white-space:pre-line}
-    .cc{margin-top:18px;font-size:12px;color:rgba(255,255,255,.3)}
-
-    /* ── Photo avatar animations ── */
-    .av-face{background:#f0e8d8 !important;}
-    .av-photo-container{position:relative;width:100%;height:100%;overflow:hidden;}
-    .av-photo{
-      width:122%;height:122%;
-      object-fit:cover;object-position:42% 10%;
-      margin-left:-11%;margin-top:-3%;
-      transform-origin:50% 38%;
-      animation:headSway 5s ease-in-out infinite;
-    }
-    @keyframes headSway{
-      0%  {transform:rotate(0deg) translateY(0);}
-      25% {transform:rotate(.5deg) translateY(-1.5px);}
-      50% {transform:rotate(0deg) translateY(0);}
-      75% {transform:rotate(-.4deg) translateY(1px);}
-      100%{transform:rotate(0deg) translateY(0);}
-    }
-    .av-photo.talking{animation:headTalk .25s ease-in-out infinite alternate;}
-    @keyframes headTalk{
-      0%  {transform:rotate(0deg) translateY(0);}
-      100%{transform:rotate(.4deg) translateY(-1.5px);}
-    }
-    /* Blink: skin-tone eyelid overlay */
-    .blink-bar{
-      position:absolute;
-      top:33%;left:16%;right:20%;height:12%;
-      background:linear-gradient(to bottom,
-        transparent 0%,rgba(244,196,148,1) 25%,
-        rgba(240,188,138,1) 55%,transparent 100%);
-      border-radius:40% 40% 55% 55%;
-      opacity:0;pointer-events:none;
-      transition:opacity .06s;
-    }
-    /* Mouth overlay: covers smile area during talking */
-    .mouth-bar{
-      position:absolute;
-      top:59%;left:31%;right:27%;height:7%;
-      background:transparent;
-      border-radius:0 0 60% 60%;
-      pointer-events:none;
-      transition:height .1s,background .1s,top .1s;
-    }
-    .mouth-bar.open{
-      background:rgba(50,15,10,.5);
-      height:9%;top:60%;
-    }
-
-    /* transcript preview + send button */
-    .trbox{width:100%;background:rgba(255,255,255,.07);
-      border:1px solid rgba(255,255,255,.15);border-radius:8px;
-      padding:8px 12px;font-size:12px;color:rgba(255,255,255,.85);
-      min-height:36px;max-height:90px;overflow-y:auto;
-      line-height:1.6;display:none;word-break:break-all;margin-top:6px;}
-    .trbox.on{display:block;}
-    .send-now{width:100%;padding:10px;border-radius:8px;
-      background:linear-gradient(135deg,var(--g),#059669);
-      color:#fff;border:none;font-size:13px;font-weight:600;
-      cursor:pointer;display:none;margin-top:6px;
-      align-items:center;justify-content:center;gap:6px;}
-    .send-now.on{display:flex;}
+    #pageCompleted{position:fixed;inset:0;z-index:1;display:none;flex-direction:column;
+      align-items:center;justify-content:center;text-align:center;padding:24px;}
+    #pageCompleted.on{display:flex;}
+    .comp-icon{font-size:64px;color:var(--g);margin-bottom:16px;}
+    .comp-title{font-size:22px;font-weight:700;margin-bottom:10px;}
+    .comp-body{font-size:14px;color:rgba(255,255,255,.55);line-height:1.9;white-space:pre-line;}
+    .comp-co{margin-top:18px;font-size:12px;color:rgba(255,255,255,.3);}
 
     /* mobile */
     @media(max-width:600px){
       .av-col{width:100%;flex-direction:row;padding:10px 12px;
         border-right:none;border-bottom:1px solid rgba(255,255,255,.05);
-        gap:10px;align-items:center}
-      .av-wrap{width:56px;height:56px;flex-shrink:0}
-      .av-face{width:56px;height:56px}
-      .av-ring{inset:-3px}
-      .av-waves{display:none}
-      .av-name{font-size:12px}
-      .av-org,.vm{display:none}
-      .av-col-r{margin-left:auto}
-      .iv-body{flex-direction:column}
+        gap:10px;align-items:center;}
+      .av-wrap{width:56px;height:56px;flex-shrink:0;}
+      .av-face{width:56px;height:56px;}
+      .av-ring{inset:-3px;}
+      .av-waves{display:none;}
+      .av-name{font-size:12px;}
+      .av-org,.vmbar{display:none;}
+      .iv-body{flex-direction:column;}
+      .chat-col{padding:6px 10px;}
     }
   </style>
 </head>
 <body>
 <div class="bg"></div>
+<div class="bg-grid"></div>
 
-<!-- CONSENT PAGE -->
+<!-- CONSENT -->
 <div id="pageConsent">
-  <div class="logo"><i class="fas fa-robot"></i></div>
-  <h1>AI面接へようこそ</h1>
-  <div class="sub">{{ applicant.name }} 様</div>
-  <div class="card">
+  <div class="c-logo"><i class="fas fa-robot"></i></div>
+  <div class="c-title">AI面接へようこそ</div>
+  <div class="c-sub">{{ applicant.name }} 様</div>
+  <div class="c-card">
     <div class="ci">
       <div class="ci-row"><div class="ci-icon"><i class="fas fa-microphone"></i></div><span>声またはテキストで回答できます</span></div>
       <div class="ci-row"><div class="ci-icon"><i class="fas fa-user-tie"></i></div><span>AIアバターが面接を進行します</span></div>
-      <div class="ci-row"><div class="ci-icon"><i class="fas fa-clock"></i></div><span>約{{ job.ai_interview_duration }}分</span></div>
-      <div class="ci-row"><div class="ci-icon"><i class="fas fa-mobile-alt"></i></div><span>スマホ・PC対応</span></div>
+      <div class="ci-row"><div class="ci-icon"><i class="fas fa-clock"></i></div><span>所要時間：約{{ job.ai_interview_duration }}分</span></div>
+      <div class="ci-row"><div class="ci-icon"><i class="fas fa-mobile-alt"></i></div><span>スマホ・PC対応（Chrome推奨）</span></div>
     </div>
-    <label class="ck">
+    <label class="c-check">
       <input type="checkbox" id="ck" onchange="document.getElementById('btnStart').disabled=!this.checked">
       <span>面接内容の記録・AI評価への同意およびマイク使用（任意）を許可します</span>
     </label>
@@ -271,32 +228,32 @@
   </div>
 </div>
 
-<!-- INTERVIEW PAGE -->
+<!-- INTERVIEW -->
 <div id="pageInterview">
   <div class="hdr">
-    <div class="hdr-left">
+    <div class="hdr-co">
       <div class="hdr-ico"><i class="fas fa-building"></i></div>
       <div>
         <div class="hdr-name">{{ job.company.name }}</div>
         <div class="hdr-job">{{ job.title }}</div>
       </div>
     </div>
-    <div style="display:flex;align-items:center;gap:10px">
-      <div style="font-size:11px;color:rgba(255,255,255,.3)" id="tcnt"></div>
-      <div class="pill"><div class="dot" id="dot"></div><span id="stxt">待機中</span></div>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div style="font-size:11px;color:rgba(255,255,255,.3);" id="tcnt"></div>
+      <div class="pill"><div class="sdot" id="sdot"></div><span id="stxt">待機中</span></div>
     </div>
   </div>
 
   <div class="iv-body">
-    <!-- Avatar column -->
+    <!-- Avatar -->
     <div class="av-col">
       <div class="av-wrap">
         <div class="av-waves" id="avW">
           <div class="wv"></div><div class="wv"></div><div class="wv"></div>
         </div>
         <div class="av-ring" id="avR"></div>
-        <div class="av-face" id="avFaceWrap">
-          <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" id="avPhoto">
+        <div class="av-face">
+          <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
             <defs>
               <radialGradient id="bgF" cx="50%" cy="40%" r="60%"><stop offset="0%" stop-color="#2d1f5e"/><stop offset="100%" stop-color="#0f0a2e"/></radialGradient>
               <radialGradient id="skinF" cx="50%" cy="35%" r="55%"><stop offset="0%" stop-color="#fde8d0"/><stop offset="100%" stop-color="#f5cba7"/></radialGradient>
@@ -309,158 +266,169 @@
             <path d="M56,88 Q52,50 100,46 Q148,50 144,88" fill="#4a2210" stroke="#3d1c0d" stroke-width="2"/>
             <path d="M56,88 Q50,130 48,165" stroke="#3d1c0d" stroke-width="15" fill="none" stroke-linecap="round"/>
             <path d="M144,88 Q150,130 152,165" stroke="#3d1c0d" stroke-width="15" fill="none" stroke-linecap="round"/>
-            <ellipse cx="56" cy="112" rx="6.5" ry="8.5" fill="#f5cba7"/><ellipse cx="144" cy="112" rx="6.5" ry="8.5" fill="#f5cba7"/>
+            <path d="M75,55 Q90,48 105,52" stroke="rgba(255,200,150,.3)" stroke-width="4" fill="none" stroke-linecap="round"/>
+            <ellipse cx="56" cy="112" rx="6.5" ry="8.5" fill="#f5cba7"/>
+            <ellipse cx="144" cy="112" rx="6.5" ry="8.5" fill="#f5cba7"/>
             <path d="M74,92 Q84,86 93,89" stroke="#4a2210" stroke-width="2" fill="none" stroke-linecap="round"/>
             <path d="M107,89 Q116,86 126,92" stroke="#4a2210" stroke-width="2" fill="none" stroke-linecap="round"/>
-            <ellipse cx="83" cy="102" rx="10.5" ry="9" fill="#fff"/><ellipse cx="117" cy="102" rx="10.5" ry="9" fill="#fff"/>
-            <ellipse cx="83" cy="103" rx="6.5" ry="6.5" fill="#2c1a10"/><ellipse cx="117" cy="103" rx="6.5" ry="6.5" fill="#2c1a10"/>
-            <circle cx="85" cy="101" r="2.2" fill="#fff"/><circle cx="119" cy="101" r="2.2" fill="#fff"/>
+            <ellipse cx="83" cy="102" rx="10.5" ry="9" fill="#fff"/>
+            <ellipse cx="117" cy="102" rx="10.5" ry="9" fill="#fff"/>
+            <ellipse cx="83" cy="103" rx="6.5" ry="6.5" fill="#2c1a10"/>
+            <ellipse cx="117" cy="103" rx="6.5" ry="6.5" fill="#2c1a10"/>
+            <circle cx="85" cy="101" r="2.2" fill="#fff"/>
+            <circle cx="119" cy="101" r="2.2" fill="#fff"/>
+            <path d="M73,95 Q77,91 83,93" stroke="#2c1a10" stroke-width="1.5" fill="none"/>
+            <path d="M107,93 Q113,91 122,95" stroke="#2c1a10" stroke-width="1.5" fill="none"/>
             <ellipse cx="70" cy="116" rx="10" ry="6" fill="rgba(255,150,150,.22)"/>
             <ellipse cx="130" cy="116" rx="10" ry="6" fill="rgba(255,150,150,.22)"/>
+            <path d="M97,112 Q100,119 103,112" stroke="#e8a87c" stroke-width="1.2" fill="none" stroke-linecap="round"/>
             <path id="mp" d="M89,130 Q100,138 111,130" stroke="#e07070" stroke-width="2" fill="rgba(220,100,100,.1)" stroke-linecap="round"/>
-            <circle cx="56" cy="122" r="3" fill="#c9a227" opacity=".8"/><circle cx="144" cy="122" r="3" fill="#c9a227" opacity=".8"/>
+            <circle cx="56" cy="122" r="3" fill="#c9a227" opacity=".8"/>
+            <circle cx="144" cy="122" r="3" fill="#c9a227" opacity=".8"/>
           </svg>
-        </div>
-      </div>
         </div>
       </div>
       <div class="av-name">AI面接官</div>
       <div class="av-org">{{ job.company.name }}</div>
-      <div class="vm"><div class="vm-f" id="vmf"></div></div>
-      <!-- mobile right slot -->
-      <div class="av-col-r">
-        <div class="wf" id="wf">{% for i in range(10) %}<div class="wb"></div>{% endfor %}</div>
-      </div>
+      <div class="vmbar"><div class="vmfill" id="vmfill"></div></div>
     </div>
 
-    <!-- Chat column -->
+    <!-- Chat -->
     <div class="chat-col">
       <div class="msgs" id="msgs"><div class="mi" id="mi"></div></div>
-      <div class="emsg" id="cerr"></div>
-
+      <div class="err-box" id="cerr"></div>
       <!-- Voice bar -->
       <div class="ibar" id="vbar">
         <button class="mbtn idle" id="mbtn"
-          ontouchstart="if(pressTalk)ptStart(event)"
-          ontouchend="if(pressTalk)ptEnd(event)"
-          ontouchcancel="if(pressTalk)ptCancel(event)"
-          onclick="if(!pressTalk||!isTouch)toggleMic()">
+          ontouchstart="if(PT)ptStart(event)"
+          ontouchend="if(PT)ptEnd(event)"
+          ontouchcancel="if(PT)ptCancel(event)"
+          onclick="if(!PT||!isTouch)toggleMic()">
           <i class="fas fa-microphone"></i>
         </button>
         <div class="bi">
           <div class="bs" id="bs">AIが話し終わるまでお待ちください</div>
-          <div class="bss" id="bss">{% if job.avatar_gender %}音声認識は自動で開始されます{% endif %}</div>
+          <div class="bss" id="bss">{% if not job.avatar_gender is none %}音声認識は自動で開始されます{% endif %}</div>
           <div class="btr" id="btr"></div>
         </div>
         <div class="wf" id="wfd">{% for i in range(10) %}<div class="wb"></div>{% endfor %}</div>
         <span class="sw" onclick="toText()">テキスト入力</span>
       </div>
-      <!-- Transcript preview + manual send (mobile) -->
+      <!-- Transcript + send button (mobile press-to-talk) -->
       <div class="trbox" id="trbox"></div>
-      <button class="send-now" id="sendNow" onclick="sendNowClick()">
+      <button class="sendnow" id="sendNow" onclick="sendNowClick()">
         <i class="fas fa-paper-plane"></i> この内容で送信する
       </button>
-
-      <!-- Text bar (fallback) -->
-      <div class="tbar" id="tbar" style="display:none">
+      <!-- Text input (fallback) -->
+      <div class="tbar" id="tbar" style="display:none;">
         <textarea class="ti" id="ti" rows="1" placeholder="回答を入力..."
           onkeydown="tiKey(event)" oninput="tiResize(this)"></textarea>
         <button class="sbtn" id="sbtn" onclick="tiSend()"><i class="fas fa-paper-plane"></i></button>
-        <span class="sw" id="vsw" onclick="toVoice()" style="display:none">音声入力</span>
+        <span class="sw" id="vsw" onclick="toVoice()" style="display:none;">音声入力</span>
       </div>
     </div>
   </div>
 </div>
 
-<!-- COMPLETED PAGE -->
+<!-- COMPLETED -->
 <div id="pageCompleted">
-  <div class="ci2"><i class="fas fa-check-circle"></i></div>
-  <div class="ct">面接が完了しました</div>
-  <div class="cb">{{ job.complete_body_ja or 'ご参加いただきありがとうございました。\n結果は担当者よりご連絡いたします。' }}</div>
-  <div class="cc">{{ job.company.name }} 採用担当</div>
+  <div class="comp-icon"><i class="fas fa-check-circle"></i></div>
+  <div class="comp-title">面接が完了しました</div>
+  <div class="comp-body">{{ job.complete_body_ja or 'ご参加いただきありがとうございました。\n結果は担当者よりご連絡いたします。' }}</div>
+  <div class="comp-co">{{ job.company.name }} 採用担当</div>
 </div>
 
 <script>
-// ── Constants ──────────────────────────────────────────────────────────────
-var TOKEN = "{{ interview.token }}";
-var GENDER = "{{ job.avatar_gender or 'female' }}";
-var LANG = "{{ job.interview_language or 'ja' }}";
-var LANG_CODE = LANG==='en'?'en-US':LANG==='vi'?'vi-VN':'ja-JP';
-var isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-var isAndroid = /Android/i.test(navigator.userAgent);
+// ── 定数 ──────────────────────────────────────────────────────────
+var TOKEN   = "{{ interview.token }}";
+var GENDER  = "{{ job.avatar_gender or 'female' }}";
+var LANG_CODE = "{{ 'en-US' if job.interview_language == 'en' else 'vi-VN' if job.interview_language == 'vi' else 'ja-JP' }}";
+var isIOS    = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+var isAndroid= /Android/i.test(navigator.userAgent);
 var isMobile = isIOS || isAndroid;
-var hasSR = !!(window.SpeechRecognition||window.webkitSpeechRecognition);
-var synth = window.speechSynthesis;
-// Press-to-talk for all mobile (most reliable cross-device approach)
-var pressTalk = isMobile;
+var PT       = isMobile;   // press-to-talk: mobile only
+var hasSR    = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+var synth    = window.speechSynthesis;
+var isTouch  = false;
 
-// ── State ─────────────────────────────────────────────────────────────────
-var state='idle', isCompleted=false, isTouch=false;
-var recognition=null, voices=[];
-var final_t='', interim_t='', isRec=false;
-var silTimer=null, mouthTimer=null, watchTimer=null, fallTimer=null;
-var isListening=false;
-var ptSent=false;
-var isSending=false;
-var savedTxt=''; // text saved for manual send button
-var totalQ=0, turnN=0;
-var audioCtx=null, analyser=null, micStream=null, rafId=null;
+// ── 状態 ──────────────────────────────────────────────────────────
+var state       = 'idle';
+var isCompleted = false;
+var isSending   = false;
+var isListening = false;
+var isRec       = false;   // press-to-talk recording
+var ptSent      = false;
+var savedTxt    = '';
 
-// ── Helpers ───────────────────────────────────────────────────────────────
-function $(id){return document.getElementById(id)}
+var final_t  = '';
+var interim_t= '';
+
+var recognition = null;
+var voices = [];
+var mouthTimer = null;
+var silTimer   = null;
+var watchTimer = null;
+var fallTimer  = null;
+
+var totalQ = 0;
+var turnN  = 0;
+
+var audioCtx = null, analyser = null, micStream = null, rafId = null;
+
+// ── ユーティリティ ────────────────────────────────────────────────
+function $(id){ return document.getElementById(id); }
+
 function cleanTxt(t){
-  return (t||'').replace(/\[INTERVIEW_COMPLETE\]/g,'').replace('INTERVIEWCOMPLETE','')
-    .replace(/\*\*(.+?)\*\*/g,'$1').replace(/\*(.+?)\*/g,'$1')
-    .replace(/#{1,6} /g,'').replace(/^[・\-] /gm,'')
-    .replace(/[*_`#~]/g,'').trim();
-}
-function show(id){$(id).style.display=''}
-function hide(id){$(id).style.display='none'}
-function showErr(msg){
-  var el=$(state==='idle'||state===undefined?'cerr':'cerr');
-  el.textContent='⚠ '+msg; el.className='emsg on';
-  setTimeout(function(){el.className='emsg'},7000);
+  return (t||'')
+    .replace(/\[?INTERVIEW[_]?COMPLETE\]?/g,'')
+    .replace(/\*\*(.+?)\*\*/g,'$1')
+    .replace(/\*(.+?)\*/g,'$1')
+    .replace(/#{1,6} /g,'')
+    .replace(/[*_`#~]/g,'')
+    .trim();
 }
 
-// ── Status ─────────────────────────────────────────────────────────────────
-function setSt(s,text,sub){
-  state=s;
-  // Hide transcript preview when not recording
-  if(s!=='rec' && s!=='idle'){
-    var tb=$('trbox'); if(tb){tb.textContent='';tb.className='trbox';}
-    var sn=$('sendNow'); if(sn) sn.className='send-now';
-  }
-  var dotEl=$('dot'), stEl=$('stxt');
-  if(dotEl) dotEl.className='dot'+(s==='rec'?' g':s==='spk'?' p':s==='thn'?' y':'');
+function showErr(msg){
+  var el=$('cerr'); if(!el) return;
+  el.textContent='⚠ '+msg; el.className='err-box on';
+  setTimeout(function(){ el.className='err-box'; }, 8000);
+}
+
+// ── ステータス更新 ─────────────────────────────────────────────────
+function setSt(s, text, sub){
+  state = s;
+  var dot=$('sdot'), stEl=$('stxt'), bsEl=$('bs'), bssEl=$('bss');
+  var mb=$('mbtn'), wf=$('wfd'), avW=$('avW'), avR=$('avR');
+  var sb=$('sbtn'), mp=$('mp');
+
+  if(dot) dot.className='sdot'+(s==='rec'?' g':s==='spk'?' p':s==='thn'?' y':'');
   if(stEl) stEl.textContent=text;
-  var bsEl=$('bs'), bssEl=$('bss');
   if(bsEl) bsEl.textContent=text;
-  if(bssEl&&sub!==undefined) bssEl.textContent=sub;
-  var avW=$('avW'), avR=$('avR');
-  if(avW) avW.classList.toggle('speaking',s==='spk');
-  if(avR) avR.classList.toggle('on',s==='spk'||s==='rec');
-  var wf=$('wfd'); if(wf) wf.classList.toggle('r',s==='rec');
-  var mb=$('mbtn');
+  if(bssEl && sub!==undefined) bssEl.textContent=sub;
+  if(avW) avW.classList.toggle('speaking', s==='spk');
+  if(avR) avR.classList.toggle('on', s==='spk'||s==='rec');
+  if(wf) wf.classList.toggle('r', s==='rec');
   if(mb) mb.className='mbtn '+(s==='rec'?'rec':s==='spk'||s==='thn'?'off':'idle');
-  var sb=$('sbtn'); if(sb) sb.disabled=(s==='spk'||s==='thn');
-  // SVG avatar mouth animation
-  var mp=$('mp');
+  if(sb) sb.disabled=(s==='spk'||s==='thn');
+
+  // 口アニメーション
   if(s==='spk'){
-    if(!mouthTimer&&mp){
+    if(!mouthTimer && mp){
       mouthTimer=setInterval(function(){
         var o=Math.random()>.4;
-        mp.setAttribute('d',o?'M89,130 Q100,144 111,130':'M89,130 Q100,135 111,130');
+        mp.setAttribute('d',o?'M89,130 Q100,144 111,130':'M89,130 Q100,134 111,130');
       },130);
     }
   } else {
-    if(mouthTimer){clearInterval(mouthTimer);mouthTimer=null;}
+    if(mouthTimer){ clearInterval(mouthTimer); mouthTimer=null; }
     if(mp) mp.setAttribute('d','M89,130 Q100,138 111,130');
   }
 }
 
-// ── Messages ──────────────────────────────────────────────────────────────
-function addMsg(role,text){
+// ── メッセージ ─────────────────────────────────────────────────────
+function addMsg(role, text){
   var mi=$('mi'), msgs=$('msgs');
+  if(!mi) return;
   var d=document.createElement('div');
   d.className='msg '+(role==='ai'?'a':'u');
   var c=cleanTxt(text);
@@ -468,137 +436,152 @@ function addMsg(role,text){
     +'<div class="mb"><div class="ml">'+(role==='ai'?'AI面接官':'あなた')+'</div>'
     +'<div class="mt">'+c.replace(/\n/g,'<br>')+'</div></div>';
   mi.appendChild(d);
-  requestAnimationFrame(function(){msgs.scrollTop=msgs.scrollHeight;});
+  requestAnimationFrame(function(){ msgs.scrollTop=msgs.scrollHeight; });
 }
 function showType(){
-  var mi=$('mi'),msgs=$('msgs');
+  var mi=$('mi'), msgs=$('msgs'); if(!mi) return;
   var d=document.createElement('div'); d.id='typ'; d.className='msg a typing';
   d.innerHTML='<div class="mav"><i class="fas fa-user-tie"></i></div>'
     +'<div class="mb"><div class="ml">AI面接官</div>'
     +'<div class="mt"><div class="td"><span></span><span></span><span></span></div></div></div>';
-  mi.appendChild(d); requestAnimationFrame(function(){msgs.scrollTop=msgs.scrollHeight;});
+  mi.appendChild(d);
+  requestAnimationFrame(function(){ msgs.scrollTop=msgs.scrollHeight; });
 }
-function hideType(){var t=$('typ');if(t){t.remove();var m=$('msgs');m.scrollTop=m.scrollHeight;}}
+function hideType(){
+  var t=$('typ'), msgs=$('msgs');
+  if(t){ t.remove(); if(msgs) msgs.scrollTop=msgs.scrollHeight; }
+}
 
-// ── TTS ───────────────────────────────────────────────────────────────────
-function getVoice(){
+// ── TTS ───────────────────────────────────────────────────────────
+function loadVoices(){
+  return new Promise(function(resolve){
+    var v=synth.getVoices();
+    if(v.length){ voices=v; resolve(); return; }
+    var done=false;
+    synth.onvoiceschanged=function(){ if(done)return; done=true; voices=synth.getVoices(); resolve(); };
+    setTimeout(function(){ if(done)return; done=true; voices=synth.getVoices(); resolve(); }, 600);
+  });
+}
+function getBestVoice(){
   var lp=LANG_CODE.slice(0,2);
   return voices.find(function(v){
     return v.lang.startsWith(lp)&&(GENDER==='female'?/female|woman|kyoko|haruka|nanami/i.test(v.name):/male|man|otoya/i.test(v.name));
-  })||voices.find(function(v){return v.lang===LANG_CODE;})||voices.find(function(v){return v.lang.startsWith(lp);})||voices[0];
+  }) || voices.find(function(v){ return v.lang===LANG_CODE; })
+     || voices.find(function(v){ return v.lang.startsWith(lp); })
+     || voices[0];
 }
-
-function splitText(t){
-  // Split on sentence-ending punctuation without lookbehind (compatibility)
-  var res=[],buf='';
-  for(var i=0;i<t.length;i++){
-    buf+=t[i];
-    if('。．！？\n'.indexOf(t[i])!==-1&&buf.trim()){res.push(buf.trim());buf='';}
+function splitChunks(text){
+  var res=[], buf='', i;
+  for(i=0;i<text.length;i++){
+    buf+=text[i];
+    if('。．！？\n'.indexOf(text[i])!==-1 && buf.trim()){ res.push(buf.trim()); buf=''; }
   }
   if(buf.trim()) res.push(buf.trim());
-  return res.length?res:[t];
+  return res.length ? res : [text];
 }
-
 function speakAll(text, onDone){
   synth.cancel();
   var clean=cleanTxt(text);
-  if(!clean){onDone&&onDone();return;}
+  if(!clean){ onDone&&onDone(); return; }
   setSt('spk','AI面接官が話しています...','話し終わると自動でマイクがONになります');
-  var chunks=splitText(clean);
-  if(!chunks.length){onDone&&onDone();return;}
-  var i=0, called=false;
-  var voice=getVoice();
-  var resume_iv=setInterval(function(){if(synth.paused)synth.resume();},5000);
-  // フォールバック: TTS未完了でも最大15秒後にonDoneを呼ぶ
-  var maxMs=Math.max(15000, clean.length*150);
+  var chunks=splitChunks(clean);
+  var idx=0, called=false;
+  var voice=getBestVoice();
+  var resumeIv=setInterval(function(){ if(synth.paused) synth.resume(); },5000);
+  // フォールバック: 文字数×100ms+10秒
+  var maxMs=Math.max(12000, clean.length*100+8000);
   var fb=setTimeout(function(){
     if(called) return; called=true;
-    clearInterval(resume_iv); synth.cancel();
+    clearInterval(resumeIv); synth.cancel();
     onDone&&onDone();
   }, maxMs);
   function next(){
-    if(i>=chunks.length){
+    if(idx>=chunks.length){
       if(called) return; called=true;
-      clearTimeout(fb); clearInterval(resume_iv);
+      clearTimeout(fb); clearInterval(resumeIv);
       onDone&&onDone(); return;
     }
-    var u=new SpeechSynthesisUtterance(chunks[i]);
+    var u=new SpeechSynthesisUtterance(chunks[idx]);
     u.lang=LANG_CODE; u.rate=0.9; u.pitch=GENDER==='female'?1.1:0.85; u.volume=1;
     if(voice) u.voice=voice;
-    u.onend=function(){i++;next();};
-    u.onerror=function(){i++;next();};
+    u.onend=function(){ idx++; next(); };
+    u.onerror=function(){ idx++; next(); };
     synth.speak(u);
   }
   next();
 }
 
-// ── After AI speaks ───────────────────────────────────────────────────────
+// ── AI発話後の処理 ─────────────────────────────────────────────────
 function afterSpeak(){
   if(isCompleted) return;
   if(hasSR){
-    if(pressTalk){
-      // Mobile (iOS+Android): press-to-talk
+    if(PT){
       setSt('idle','マイクボタンを押して回答','押している間録音・離すと送信');
     } else {
-      // Desktop only: auto-start
       startListening();
     }
   } else {
-    setSt('idle','回答を入力してください','テキスト入力して送信ボタンを押してください');
+    setSt('idle','回答を入力してください','テキストを入力して送信ボタンを押してください');
   }
 }
 
-// ── Voice recognition ─────────────────────────────────────────────────────
+// ── 音声認識（デスクトップ用連続認識） ────────────────────────────
 function makeRec(){
   if(!hasSR) return false;
   var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
   recognition=new SR();
   recognition.lang=LANG_CODE;
-  // pressTalk: continuous=false (avoids Android duplicate chunk bug)
-  // Desktop auto-listen: continuous=true
-  recognition.continuous = !pressTalk;
+  recognition.continuous=!PT;   // デスクトップ=true, モバイル=false
   recognition.interimResults=true;
   recognition.onresult=function(e){
-    // Only process NEW results (from resultIndex) - prevents duplication
-    var int='', i;
-    for(i=e.resultIndex;i<e.results.length;i++){
-      var r=e.results[i];
-      if(r.isFinal) final_t+=r[0].transcript;
-      else int+=r[0].transcript;
+    var f='', int_='', i;
+    // デスクトップ: resultIndexから新規分だけ追加
+    if(!PT){
+      for(i=e.resultIndex;i<e.results.length;i++){
+        if(e.results[i].isFinal) final_t+=e.results[i][0].transcript;
+        else int_+=e.results[i][0].transcript;
+      }
+    } else {
+      // モバイル: 毎回全体を再構築（continuous=false時の重複防止）
+      for(i=0;i<e.results.length;i++){
+        if(e.results[i].isFinal) f+=e.results[i][0].transcript;
+        else int_+=e.results[i][0].transcript;
+      }
+      final_t=f;
     }
-    interim_t=int;
-    var combined=(final_t+int).trim();
-    var el=$('btr'); if(el) el.textContent=combined;
-    if(pressTalk && combined){
-      savedTxt=combined; // save for manual send button
-      var tb=$('trbox'); if(tb){tb.textContent=combined;tb.className='trbox on';}
-      var sn=$('sendNow'); if(sn) sn.className='send-now on';
+    interim_t=int_;
+    var combined=(final_t+int_).trim();
+    var btr=$('btr'); if(btr) btr.textContent=combined;
+    // モバイル: プレビューとボタンを表示
+    if(PT && combined){
+      savedTxt=combined;
+      var tb=$('trbox'); if(tb){ tb.textContent=combined; tb.className='trbox on'; }
+      var sn=$('sendNow'); if(sn) sn.className='sendnow on';
     }
-    if(!pressTalk) resetSil();
+    // デスクトップ: 沈黙タイマーリセット
+    if(!PT) resetSil();
   };
   recognition.onend=function(){
-    if(pressTalk){
-      if(isRec){
-        // Android: recognition auto-stopped while still recording
-        // Don't send yet - wait for ptEnd. Text is already in final_t.
-        console.log('Early onend while recording, final_t length:', final_t.length);
-        return;
-      }
-      if(fallTimer){clearTimeout(fallTimer);fallTimer=null;}
-      if(ptSent) return; // already sent by fallTimer
+    if(PT){
+      // モバイル: press-to-talk → ptEnd/fallTimerが処理
+      if(isRec) return;
+      if(fallTimer){ clearTimeout(fallTimer); fallTimer=null; }
+      if(ptSent) return;
       ptSent=true;
       var txt=(final_t+interim_t).trim(); interim_t='';
       if(txt) sendMsg(txt);
       else setSt('idle','マイクボタンを押して回答','押している間録音・離すと送信');
     } else {
-      // Desktop: if we have text, send it; otherwise restart recognition
-      if(state==='rec'&&!isCompleted){
-        var saved=(final_t||interim_t).trim();
-        if(saved){
-          // Text captured - send immediately
-          stopListening(); sendMsg(saved);
+      // デスクトップ: テキストがあれば送信、なければ再起動
+      if(state==='rec' && !isCompleted){
+        var txt=(final_t||interim_t).trim();
+        if(txt){
+          // 話し終わってonendが来た → そのまま送信
+          isListening=false;
+          clearSil(); clearWatch();
+          sendMsg(txt);
         } else {
-          // No text yet - restart recognition
+          // 何も認識されていない → 再起動
           isListening=false;
           startListening();
         }
@@ -606,106 +589,94 @@ function makeRec(){
     }
   };
   recognition.onerror=function(e){
-    if(e.error==='not-allowed'){hasSR=false;toText();}
+    if(e.error==='not-allowed'){ hasSR=false; toText(); }
     else if(e.error!=='no-speech') console.warn('STT:',e.error);
   };
   return true;
 }
 
+// デスクトップ用: 連続認識の開始
 function startListening(){
   if(isCompleted||isListening) return;
-  clearWatchdog();
+  clearWatch();
   isListening=true;
   recognition=null;
-  if(!makeRec()){isListening=false;return;}
-  // Only clear text on mobile press-to-talk; desktop preserves text across recognition restarts
-  if(pressTalk){ final_t=''; interim_t=''; }
-  var el=$('btr'); if(el) el.textContent=pressTalk?'':el.textContent;
+  if(!makeRec()){ isListening=false; return; }
+  // デスクトップ: final_tは保持（認識再起動時に消さない）
+  if(PT){ final_t=''; interim_t=''; }
+  interim_t='';
+  var btr=$('btr'); if(btr) btr.textContent='';
   setSt('rec','お話しください...','3秒間の沈黙で自動送信されます');
   try{
     recognition.start();
     if(isIOS) startMic();
-    resetSil();
-    // Watchdog only for desktop continuous mode
-    if(!pressTalk) watchdogCheck();
-  }catch(e){
-    console.warn('recognition.start failed:',e);
+    if(!PT){ resetSil(); watchdogStart(); }
+  } catch(e){
+    console.warn('recognition.start:',e);
     isListening=false;
     setSt('idle','もう一度お試しください','');
   }
 }
 function stopListening(){
   isListening=false;
-  clearSil(); clearWatchdog();
-  try{if(recognition) recognition.stop();}catch(e){}
+  clearSil(); clearWatch();
+  try{ if(recognition) recognition.stop(); }catch(e){}
   recognition=null;
   if(isIOS) stopMic();
 }
+
+// 沈黙検出（デスクトップ用）
 function resetSil(){
   clearSil();
   silTimer=setTimeout(function(){
     if(state==='rec'){
-      // Use final_t first, fall back to interim_t (Chrome may not finalize before silence)
+      // final_t優先、なければinterim_t（Chromeがfinalを遅らせる場合の対策）
       var txt=(final_t||interim_t).trim();
-      if(txt){stopListening();sendMsg(txt);}
-      else resetSil(); // nothing heard yet, keep waiting
+      if(txt){ stopListening(); sendMsg(txt); }
+      else resetSil(); // まだ何も聞こえていない
     }
   },3000);
 }
-function watchdogCheck(){
-  clearWatchdog();
+function clearSil(){ if(silTimer){ clearTimeout(silTimer); silTimer=null; } }
+
+// ウォッチドッグ（認識が停止しても再起動）
+function watchdogStart(){
+  clearWatch();
   watchTimer=setTimeout(function(){
     watchTimer=null;
-    if(state==='rec'&&!isCompleted&&!pressTalk){
-      console.log('Watchdog: restarting SR');
-      isListening=false; // allow restart
+    if(state==='rec' && !isCompleted && !PT){
+      isListening=false;
       stopListening();
-      setTimeout(function(){startListening();},300);
+      setTimeout(startListening, 300);
     }
-  },8000);
+  },10000);
 }
-function clearWatchdog(){
-  if(watchTimer){clearTimeout(watchTimer);watchTimer=null;}
-}
-function clearSil(){if(silTimer){clearTimeout(silTimer);silTimer=null;}}
-function sendNowClick(){
-  if(isCompleted) return;
-  var txt=savedTxt||(final_t+interim_t).trim();
-  if(!txt){alert('音声が認識されていません。もう一度お試しください。');return;}
-  // Force reset isSending in case previous call got stuck
-  isSending=false;
-  isRec=false; ptSent=true; savedTxt='';
-  if(fallTimer){clearTimeout(fallTimer);fallTimer=null;}
-  try{if(recognition){recognition.stop();recognition=null;}}catch(e){}
-  if(isIOS) stopMic();
-  var tb=$('trbox'); if(tb){tb.textContent='';tb.className='trbox';}
-  var sn=$('sendNow'); if(sn) sn.className='send-now';
-  sendMsg(txt);
-}
+function clearWatch(){ if(watchTimer){ clearTimeout(watchTimer); watchTimer=null; } }
+
+// マイクボタン（デスクトップクリック）
 function toggleMic(){
   if(state==='spk'||state==='thn'||isCompleted) return;
   if(state==='rec'){
     isListening=false;
     stopListening();
-    var t=final_t.trim();if(t) sendMsg(t);else setSt('idle','待機中','');
+    var t=(final_t||interim_t).trim();
+    if(t) sendMsg(t); else setSt('idle','待機中','');
   } else {
-    isListening=false;
     startListening();
   }
 }
 
-// ── Press-to-talk ─────────────────────────────────────────────────────────
+// ── プレストーク（モバイル用） ─────────────────────────────────────
 function ptStart(e){
   isTouch=true; e.preventDefault();
   if(state==='spk'||state==='thn'||isCompleted) return;
-  recognition=null; // recreate every time on iOS
-  if(!makeRec()) return;
-  isRec=true; ptSent=false; final_t=''; interim_t='';
-  var el=$('btr'); if(el) el.textContent='';
-  var tb=$('trbox'); if(tb){tb.textContent='';tb.className='trbox';}
-  var sn=$('sendNow'); if(sn) sn.className='send-now';
+  recognition=null; if(!makeRec()) return;
+  isRec=true; ptSent=false; final_t=''; interim_t=''; savedTxt='';
+  var btr=$('btr'); if(btr) btr.textContent='';
+  var tb=$('trbox'); if(tb){ tb.textContent=''; tb.className='trbox'; }
+  var sn=$('sendNow'); if(sn) sn.className='sendnow';
   setSt('rec','録音中...','離すと送信されます');
-  try{recognition.start();}catch(err){console.warn('start err',err);}
+  try{ recognition.start(); }catch(err){ console.warn('pt start:',err); }
   if(isIOS) startMic();
 }
 function ptEnd(e){
@@ -713,54 +684,72 @@ function ptEnd(e){
   isRec=false; ptSent=false;
   if(isIOS) stopMic();
   setSt('idle','確認中...','');
-  if(fallTimer){clearTimeout(fallTimer);fallTimer=null;}
-  // Capture text NOW in case recognition already stopped (Android auto-stop)
   var nowTxt=(final_t+interim_t).trim();
-  // Show transcript box so user can see what was captured
   if(nowTxt){
-    savedTxt=nowTxt; // save for manual send button
-    var tb=$('trbox'); if(tb){tb.textContent=nowTxt;tb.className='trbox on';}
-    var sn=$('sendNow'); if(sn) sn.className='send-now on';
+    savedTxt=nowTxt;
+    var tb=$('trbox'); if(tb){ tb.textContent=nowTxt; tb.className='trbox on'; }
+    var sn=$('sendNow'); if(sn) sn.className='sendnow on';
   }
-  // Stop recognition (triggers onend on iOS)
-  try{if(recognition) recognition.stop();}catch(err){}
-  // Fallback: 2 seconds gives time for onend to fire first
+  if(fallTimer){ clearTimeout(fallTimer); fallTimer=null; }
+  try{ if(recognition) recognition.stop(); }catch(err){}
+  // 2秒後にフォールバック送信
   fallTimer=setTimeout(function(){
     fallTimer=null;
-    if(ptSent) return; // onend or sendNow already handled it
+    if(ptSent) return;
     ptSent=true;
-    var txt=(final_t+interim_t).trim()||nowTxt; interim_t='';
-    if(txt){
-      // Hide preview and send
-      var tb=$('trbox'); if(tb){tb.textContent='';tb.className='trbox';}
-      var sn=$('sendNow'); if(sn) sn.className='send-now';
-      sendMsg(txt);
-    } else {
-      setSt('idle','マイクボタンを押して回答','押している間録音・離すと送信');
-    }
+    var txt=(final_t+interim_t).trim()||savedTxt; interim_t=''; savedTxt='';
+    var tb=$('trbox'); if(tb){ tb.textContent=''; tb.className='trbox'; }
+    var sn=$('sendNow'); if(sn) sn.className='sendnow';
+    if(txt) sendMsg(txt);
+    else setSt('idle','マイクボタンを押して回答','押している間録音・離すと送信');
   },2000);
 }
 function ptCancel(e){
-  if(!isRec) return; isRec=false; ptSent=true; // prevent any send
-  if(fallTimer){clearTimeout(fallTimer);fallTimer=null;}
-  final_t=''; interim_t='';
+  if(!isRec) return; isRec=false; ptSent=true;
+  if(fallTimer){ clearTimeout(fallTimer); fallTimer=null; }
+  final_t=''; interim_t=''; savedTxt='';
   if(isIOS) stopMic();
-  try{recognition.stop();}catch(e){}
+  try{ if(recognition) recognition.stop(); }catch(e){}
+  var tb=$('trbox'); if(tb){ tb.textContent=''; tb.className='trbox'; }
+  var sn=$('sendNow'); if(sn) sn.className='sendnow';
   setSt('idle','マイクボタンを押して回答','押している間録音・離すと送信');
 }
+function sendNowClick(){
+  if(isCompleted) return;
+  var txt=savedTxt||(final_t+interim_t).trim();
+  if(!txt){ alert('音声が認識されていません'); return; }
+  isSending=false; // 念のためリセット
+  isRec=false; ptSent=true; savedTxt='';
+  if(fallTimer){ clearTimeout(fallTimer); fallTimer=null; }
+  try{ if(recognition){ recognition.stop(); recognition=null; } }catch(e){}
+  if(isIOS) stopMic();
+  var tb=$('trbox'); if(tb){ tb.textContent=''; tb.className='trbox'; }
+  var sn=$('sendNow'); if(sn) sn.className='sendnow';
+  sendMsg(txt);
+}
 
-// ── Text input ────────────────────────────────────────────────────────────
-function toText(){hide('vbar');show('tbar');if(hasSR) $('vsw').style.display='inline';}
-function toVoice(){show('vbar');hide('tbar');}
-function tiKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();tiSend();}}
-function tiResize(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,100)+'px';}
+// ── テキスト入力 ──────────────────────────────────────────────────
+function toText(){
+  var vb=$('vbar'), tb=$('tbar'), vsw=$('vsw');
+  if(vb) vb.style.display='none';
+  if(tb) tb.style.display='flex';
+  if(vsw && hasSR) vsw.style.display='inline';
+}
+function toVoice(){
+  var vb=$('vbar'), tb=$('tbar');
+  if(vb) vb.style.display='';
+  if(tb) tb.style.display='none';
+}
+function tiKey(e){ if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); tiSend(); } }
+function tiResize(el){ el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,100)+'px'; }
 function tiSend(){
-  var el=$('ti'); var t=el.value.trim();
+  var el=$('ti'); if(!el) return;
+  var t=el.value.trim();
   if(!t||state==='spk'||state==='thn'||isCompleted) return;
   el.value=''; el.style.height='auto'; sendMsg(t);
 }
 
-// ── Mic meter ─────────────────────────────────────────────────────────────
+// ── マイクメーター ────────────────────────────────────────────────
 function startMic(){
   navigator.mediaDevices.getUserMedia({audio:true}).then(function(stream){
     micStream=stream;
@@ -768,181 +757,152 @@ function startMic(){
     audioCtx.createMediaStreamSource(stream).connect(analyser);
     var data=new Uint8Array(analyser.frequencyBinCount);
     var wbs=document.querySelectorAll('.wb');
-    var vmf=$('vmf');
+    var vf=$('vmfill');
     function loop(){
       rafId=requestAnimationFrame(loop);
       analyser.getByteFrequencyData(data);
       var avg=0; for(var i=0;i<32;i++) avg+=data[i]; avg/=32;
-      if(vmf) vmf.style.width=Math.min(avg/128*100,100)+'%';
-      wbs.forEach(function(b,i){b.style.height=Math.max(3,(data[i*2]||0)/255*20)+'px';});
+      if(vf) vf.style.width=Math.min(avg/128*100,100)+'%';
+      wbs.forEach(function(b,i){ b.style.height=Math.max(3,(data[i*2]||0)/255*20)+'px'; });
     } loop();
   }).catch(function(){});
 }
 function stopMic(){
-  if(rafId){cancelAnimationFrame(rafId);rafId=null;}
-  if(micStream){micStream.getTracks().forEach(function(t){t.stop()});micStream=null;}
-  if(audioCtx){audioCtx.close();audioCtx=null;} analyser=null;
-  var vmf=$('vmf'); if(vmf) vmf.style.width='0%';
-  document.querySelectorAll('.wb').forEach(function(b){b.style.height='3px';});
+  if(rafId){ cancelAnimationFrame(rafId); rafId=null; }
+  if(micStream){ micStream.getTracks().forEach(function(t){t.stop();}); micStream=null; }
+  if(audioCtx){ audioCtx.close(); audioCtx=null; } analyser=null;
+  var vf=$('vmfill'); if(vf) vf.style.width='0%';
+  document.querySelectorAll('.wb').forEach(function(b){ b.style.height='3px'; });
 }
 
-// ── START ─────────────────────────────────────────────────────────────────
+// ── まばたき ──────────────────────────────────────────────────────
+function scheduleBlink(){
+  var delay=2500+Math.random()*4000;
+  setTimeout(function(){
+    // まばたきオーバーレイの代わりにSVGの目を縮小
+    var eyeL=$('mi'), el=document.querySelector('#pageInterview .av-face svg ellipse[rx="10.5"]');
+    // SVGで目を一瞬閉じる（scaleY変換）
+    var eyes=document.querySelectorAll('#pageInterview .av-face svg ellipse[ry="9"]');
+    eyes.forEach(function(e){ e.setAttribute('ry','1'); });
+    setTimeout(function(){
+      eyes.forEach(function(e){ e.setAttribute('ry','9'); });
+      scheduleBlink();
+    },110);
+  }, delay);
+}
+
+// ── 面接開始 ─────────────────────────────────────────────────────
 function doStart(){
   var btn=$('btnStart');
   btn.disabled=true;
   btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> 接続中...';
-
-  // Unlock TTS on user gesture (synchronous)
-  try{
-    voices=synth.getVoices();
-    var u=new SpeechSynthesisUtterance('');
-    u.volume=0;u.rate=10;synth.speak(u);
-  }catch(e){}
-
-  // Async init voices
-  if(!voices.length){
-    synth.onvoiceschanged=function(){voices=synth.getVoices();};
-    setTimeout(function(){voices=synth.getVoices();},400);
-  }
-
-  // Setup mode
+  // iOS: ユーザー操作中にTTSをアンロック
+  try{ var u=new SpeechSynthesisUtterance(''); u.volume=0; u.rate=10; synth.speak(u); }catch(e){}
+  // ボイスリスト読み込み
+  loadVoices();
+  // 入力モード設定
   if(!hasSR){
     toText();
-  } else if(pressTalk){
-    // Mobile (iOS+Android): press-to-talk
-    $('bss').textContent='マイクボタンを押している間録音・離すと送信';
+  } else if(PT){
+    var bss=$('bss'); if(bss) bss.textContent='マイクボタンを押している間録音・離すと送信';
   } else {
-    // Desktop only: auto continuous recognition
+    // デスクトップ: 音声認識準備
     makeRec();
   }
-
-  // Switch to interview screen immediately
-  hide('pageConsent');
-  $('pageInterview').classList.add('on');
+  // 画面遷移
+  var pc=$('pageConsent'), pi=$('pageInterview');
+  if(pc) pc.style.display='none';
+  if(pi) pi.classList.add('on');
   setSt('thn','接続中...','');
-
-  // API call
+  scheduleBlink();
+  // API呼び出し
   fetch('/interview/'+TOKEN+'/start',{method:'POST'})
-    .then(function(r){
-      if(!r.ok) throw new Error('HTTP '+r.status);
-      return r.json();
-    })
+    .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
     .then(function(data){
-      fetch('/interview/'+TOKEN+'/messages').then(function(r){return r.json();}).then(function(d){totalQ=d.total_questions||0;}).catch(function(){});
+      fetch('/interview/'+TOKEN+'/messages').then(function(r){return r.json();})
+        .then(function(d){ totalQ=d.total_questions||0; }).catch(function(){});
       addMsg('ai',data.greeting);
       speakAll(data.greeting, afterSpeak);
     })
     .catch(function(e){
-      // Go back to consent
-      $('pageInterview').classList.remove('on');
-      show('pageConsent');
-      var em=$('emsg');
-      em.textContent='⚠ 接続失敗: '+e.message; em.className='emsg on';
+      if(pi) pi.classList.remove('on');
+      if(pc) pc.style.display='';
+      var em=$('emsg'); if(em){ em.textContent='⚠ 接続失敗: '+e.message; em.className='emsg on'; }
       btn.disabled=false;
       btn.innerHTML='<i class="fas fa-play-circle"></i> 面接を開始する';
     });
 }
 
-// ── SEND ─────────────────────────────────────────────────────────────────
+// ── 送信 ─────────────────────────────────────────────────────────
 function sendMsg(text){
   if(isCompleted||isSending) return;
-  // Truncate very long text (prevents API timeout)
-  if(text.length>500) text=text.slice(0,500)+'...';
-  isSending=true;
-  ptSent=true; savedTxt='';
-  // Stop any active recognition and clear timers
-  isListening=false;
-  clearSil(); clearWatchdog();
-  if(fallTimer){clearTimeout(fallTimer);fallTimer=null;}
-  try{if(recognition){recognition.stop();recognition=null;}}catch(e){}
+  if(text.length>500) text=text.slice(0,500);
+  isSending=true; ptSent=true; savedTxt='';
+  isListening=false; clearSil(); clearWatch();
+  if(fallTimer){ clearTimeout(fallTimer); fallTimer=null; }
+  try{ if(recognition){ recognition.stop(); recognition=null; } }catch(e){}
   setSt('thn','考え中...','AIが回答を生成しています');
   addMsg('user',text);
   var btr=$('btr'); if(btr) btr.textContent='';
   showType(); turnN++;
-  if(totalQ>0) $('tcnt').textContent=turnN+'/'+totalQ+'問';
-
-  // 40秒タイムアウト
+  if(totalQ>0){ var tc=$('tcnt'); if(tc) tc.textContent=turnN+'/'+totalQ+'問'; }
   var tid=setTimeout(function(){
     isSending=false; hideType();
     showErr('タイムアウト。マイクボタンを押して再試行してください。');
     setSt('idle','再試行できます','マイクボタンを押して回答');
   },40000);
-
   fetch('/interview/'+TOKEN+'/message',{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
+    method:'POST', headers:{'Content-Type':'application/json'},
     body:JSON.stringify({message:text})
   })
-  .then(function(r){return r.text().then(function(t){return{ok:r.ok,status:r.status,text:t};});})
+  .then(function(r){ return r.text().then(function(t){ return {ok:r.ok,status:r.status,body:t}; }); })
   .then(function(r){
     clearTimeout(tid); isSending=false; hideType();
-    if(!r.ok){showErr('サーバーエラー('+r.status+'): '+r.text);setSt('idle','再試行できます','マイクボタンを押して回答');return;}
-    var d=JSON.parse(r.text);
+    if(!r.ok){
+      showErr('サーバーエラー('+r.status+'): '+r.body);
+      setSt('idle','再試行できます','マイクボタンを押して回答'); return;
+    }
+    var d=JSON.parse(r.body);
     addMsg('ai',d.reply);
     if(d.completed){
-      isCompleted=true;
-      // 面接終了: TTSを読んでから確実に遷移
+      isCompleted=true; synth.cancel();
       var gone=false;
       function goCompleted(){
         if(gone) return; gone=true;
-        $('pageInterview').classList.remove('on');
-        $('pageCompleted').classList.add('on');
+        var pi=$('pageInterview'), pc=$('pageCompleted');
+        if(pi) pi.classList.remove('on');
+        if(pc) pc.classList.add('on');
       }
-      speakAll(d.reply, function(){
-        setTimeout(goCompleted, 500);
-      });
-      // フェイルセーフ: 8秒後に強制遷移
-      setTimeout(goCompleted, 8000);
+      speakAll(d.reply, function(){ setTimeout(goCompleted,500); });
+      setTimeout(goCompleted, 10000);
     } else {
       speakAll(d.reply, afterSpeak);
     }
   })
   .catch(function(e){
     clearTimeout(tid); isSending=false;
-    hideType(); showErr('通信エラー: '+e.message);
+    hideType();
+    showErr('通信エラー: '+e.message);
     setSt('idle','再試行できます','マイクボタンを押して回答');
   });
 }
-// ── Blink animation ─────────────────────────────────────────────────────
-function scheduleBlink(){
-  var bbar=$('blinkBar');
-  if(!bbar) return;
-  var delay=2000+Math.random()*4000; // 2〜6秒ごと
-  setTimeout(function(){
-    // Blink: close (opacity 1) then open (opacity 0)
-    bbar.style.opacity='1';
-    setTimeout(function(){
-      bbar.style.opacity='0';
-      scheduleBlink();
-    },120); // 120ms で目を開く
-  }, delay);
-}
-// Start blinking when interview begins
-function startBlink(){ scheduleBlink(); }
 
-// ── Page Visibility: アプリ復帰時のリセット ─────────────────────────────
-document.addEventListener('visibilitychange', function(){
-  if(document.hidden) {
-    // バックグラウンドへ: タイマー系を止める
-    clearSil(); clearWatchdog();
-  } else {
-    // フォアグラウンドへ復帰
-    if(isCompleted) return;
-    // TTSをキャンセルして状態をリセット
+// ── アプリ復帰時リセット ──────────────────────────────────────────
+document.addEventListener('visibilitychange',function(){
+  if(document.hidden){ clearSil(); clearWatch(); return; }
+  if(isCompleted) return;
+  var pi=$('pageInterview'); if(!pi||!pi.classList.contains('on')) return;
+  if(state==='spk') return; // TTS中は邪魔しない
+  if(state==='rec'||state==='thn'){
     synth.cancel();
-    // 認識も止める
-    try{if(recognition){recognition.stop();recognition=null;}}catch(e){}
+    try{ if(recognition){ recognition.stop(); recognition=null; } }catch(e){}
     isListening=false; isRec=false; isSending=false;
-    clearSil(); clearWatchdog();
-    if(fallTimer){clearTimeout(fallTimer);fallTimer=null;}
-    // 面接中であればUIをリセット
-    if($('pageInterview') && $('pageInterview').classList.contains('on')){
-      hideType();
-      setSt('idle',
-        pressTalk ? 'マイクボタンを押して回答' : '回答を入力してください',
-        pressTalk ? '押している間録音・離すと送信' : 'テキスト入力して送信ボタンを押してください'
-      );
-    }
+    clearSil(); clearWatch();
+    if(fallTimer){ clearTimeout(fallTimer); fallTimer=null; }
+    hideType();
+    setSt('idle',
+      PT?'マイクボタンを押して回答':'回答を入力してください',
+      PT?'押している間録音・離すと送信':'');
   }
 });
 </script>
