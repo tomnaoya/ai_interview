@@ -484,31 +484,41 @@ function speakAll(text, onDone){
   var clean=cleanTxt(text);
   if(!clean){ onDone&&onDone(); return; }
   setSt('spk','AI面接官が話しています...','話し終わると自動でマイクがONになります');
-  var chunks=splitChunks(clean);
-  var idx=0, called=false;
   var voice=getBestVoice();
-  var resumeIv=setInterval(function(){ if(synth.paused) synth.resume(); },5000);
-  // フォールバック: 文字数×100ms+10秒
-  var maxMs=Math.max(12000, clean.length*100+8000);
+  var called=false;
+  // フォールバック: 文字数×120ms+12秒
+  var maxMs=Math.max(15000, clean.length*120+12000);
   var fb=setTimeout(function(){
     if(called) return; called=true;
-    clearInterval(resumeIv); synth.cancel();
-    onDone&&onDone();
+    synth.cancel(); onDone&&onDone();
   }, maxMs);
-  function next(){
-    if(idx>=chunks.length){
-      if(called) return; called=true;
-      clearTimeout(fb); clearInterval(resumeIv);
-      onDone&&onDone(); return;
+  function finish(){
+    if(called) return; called=true;
+    clearTimeout(fb); onDone&&onDone();
+  }
+  if(isMobile){
+    // モバイル: チャンク分割（Androidの途中停止バグ対策）
+    var chunks=splitChunks(clean), idx=0;
+    var iv=setInterval(function(){ if(synth.paused) synth.resume(); },5000);
+    function next(){
+      if(idx>=chunks.length){ clearInterval(iv); finish(); return; }
+      var u=new SpeechSynthesisUtterance(chunks[idx]);
+      u.lang=LANG_CODE; u.rate=0.9; u.pitch=GENDER==='female'?1.1:0.85; u.volume=1;
+      if(voice) u.voice=voice;
+      u.onend=function(){ idx++; next(); };
+      u.onerror=function(){ idx++; next(); };
+      synth.speak(u);
     }
-    var u=new SpeechSynthesisUtterance(chunks[idx]);
+    next();
+  } else {
+    // PC Desktop: 1つのutteranceで読む（チャンク分割しない）
+    var u=new SpeechSynthesisUtterance(clean);
     u.lang=LANG_CODE; u.rate=0.9; u.pitch=GENDER==='female'?1.1:0.85; u.volume=1;
     if(voice) u.voice=voice;
-    u.onend=function(){ idx++; next(); };
-    u.onerror=function(){ idx++; next(); };
+    u.onend=finish;
+    u.onerror=finish;
     synth.speak(u);
   }
-  next();
 }
 
 // ── AI発話後の処理 ─────────────────────────────────────────────────
@@ -576,19 +586,11 @@ function makeRec(){
       if(txt) sendMsg(txt);
       else setSt('idle','マイクボタンを押して回答','押している間録音・離すと送信');
     } else {
-      // デスクトップ: テキストがあれば送信、なければ再起動
+      // デスクトップ: onendでは送信しない。常に再起動して沈黙タイマーに任せる
+      // （onendで即送信すると発言途中でも切られてしまう）
       if(state==='rec' && !isCompleted){
-        var txt=(final_t||interim_t).trim();
-        if(txt){
-          // 話し終わってonendが来た → そのまま送信
-          isListening=false;
-          clearSil(); clearWatch();
-          sendMsg(txt);
-        } else {
-          // 何も認識されていない → 再起動
-          isListening=false;
-          startListening();
-        }
+        isListening=false;
+        startListening();
       }
     }
   };
@@ -634,12 +636,11 @@ function resetSil(){
   clearSil();
   silTimer=setTimeout(function(){
     if(state==='rec'){
-      // final_t優先、なければinterim_t（Chromeがfinalを遅らせる場合の対策）
       var txt=(final_t||interim_t).trim();
       if(txt){ stopListening(); sendMsg(txt); }
-      else resetSil(); // まだ何も聞こえていない
+      else resetSil();
     }
-  },3000);
+  },4000); // 4秒: 発言の間を考慮
 }
 function clearSil(){ if(silTimer){ clearTimeout(silTimer); silTimer=null; } }
 
