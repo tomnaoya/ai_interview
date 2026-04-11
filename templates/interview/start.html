@@ -842,6 +842,7 @@ function sendMsg(text){
   if(isCompleted||isSending) return;
   if(text.length>500) text=text.slice(0,500);
   isSending=true; ptSent=true; savedTxt='';
+  final_t=''; interim_t=''; // 前回の発言をクリア
   isListening=false; clearSil(); clearWatch();
   if(fallTimer){ clearTimeout(fallTimer); fallTimer=null; }
   try{ if(recognition){ recognition.stop(); recognition=null; } }catch(e){}
