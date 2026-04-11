@@ -263,7 +263,7 @@
 // ── Initial data ───────────────────────────────────────────────────────────
 let questions = {{ (job.ai_questions | tojson) if job and job.ai_questions else '[]' }};
 let keywords  = {{ (job.keywords | tojson) if job and job.keywords else '[]' }};
-let penaltyTraits = {{ (job.penalty_traits | tojson) if job and job.penalty_traits else '["他人のせいにする","他責","他者の悪口を言う"]' }};
+let penaltyTraits = {{ (job.penalty_traits | tojson) if job and job.get('penalty_traits') else '["他人のせいにする","他責","他者の悪口を言う"]' }};
 let gradeCriteria = {{ (job.grade_criteria | tojson) if job and job.grade_criteria else '[{"grade":"S","min":100},{"grade":"A","min":80},{"grade":"B","min":60},{"grade":"C","min":40},{"grade":"D","min":0}]' }};
 
 const MAX_TIME = 2100;

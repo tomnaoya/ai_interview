@@ -67,6 +67,16 @@ async def startup_event():
     print(f"★ DATABASE_URL = {os.getenv('DATABASE_URL', f'sqlite:///{DATA_DIR}/ai_interview.db')}")
     import sqlalchemy
     print(f"★ Engine URL = {engine.url}")
+
+    # DBマイグレーション: 新しいカラムを安全に追加
+    try:
+        with engine.connect() as conn:
+            conn.execute(sqlalchemy.text("ALTER TABLE jobs ADD COLUMN penalty_traits JSON"))
+            conn.commit()
+            print("✅ penalty_traits column added")
+    except Exception:
+        pass  # すでに存在する場合は無視
+
     db = next(get_db())
 
     # Admin
@@ -139,20 +149,36 @@ async def startup_event():
         print(f"✅ Job created: {job.title}")
     else:
         # 既存ジョブのデータが消えていた場合は復元する
-        updated = False
-        if not job.ai_questions:
-            job.ai_questions = SEED_QUESTIONS
-            job.ai_max_turns = len(SEED_QUESTIONS)
-            updated = True
-        if not job.keywords:
-            job.keywords = SEED_KEYWORDS
-            updated = True
-        if not job.penalty_traits:
-            job.penalty_traits = SEED_PENALTY_TRAITS
-            updated = True
-        if updated:
-            db.commit()
-            print(f"✅ Job restored: {job.title}")
+        try:
+            updated = False
+            if not job.ai_questions:
+                job.ai_questions = SEED_QUESTIONS
+                job.ai_max_turns = len(SEED_QUESTIONS)
+                updated = True
+                print("✅ ai_questions restored")
+            if not job.keywords:
+                job.keywords = SEED_KEYWORDS
+                updated = True
+                print("✅ keywords restored")
+            # penalty_traits: getattr で安全にアクセス（カラム未追加でもエラーにならない）
+            if not getattr(job, "penalty_traits", None):
+                try:
+                    job.penalty_traits = SEED_PENALTY_TRAITS
+                    updated = True
+                    print("✅ penalty_traits restored")
+                except Exception:
+                    pass
+            if updated:
+                db.commit()
+                print(f"✅ Job restored: {job.title}")
+            else:
+                q = len(job.ai_questions or [])
+                k = len(job.keywords or [])
+                print(f"ℹ Job OK: questions={q}, keywords={k}")
+        except Exception as e:
+            import traceback
+            print(f"⚠ Job restore error: {e}")
+            traceback.print_exc()
 
     db.close()
 
