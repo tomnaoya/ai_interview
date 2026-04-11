@@ -71,6 +71,7 @@ class Job(Base):
     score_speaking = Column(Integer, default=20)
     score_posture = Column(Integer, default=10)
     keywords = Column(JSON)
+    penalty_traits = Column(JSON)  # 減点特性リスト
     grade_criteria = Column(JSON)
     ai_role = Column(Text)
     ai_evaluation_prompt = Column(Text)

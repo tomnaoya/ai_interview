@@ -166,6 +166,16 @@
     </div>
     <input type="hidden" name="keywords_json" id="keywordsJson">
 
+    <!-- 減点特性 -->
+    <div class="subsection-title mt-4">減点特性</div>
+    <div class="field-hint">※発言の中で見られる特性として設定します。該当する場合に評価に影響します。</div>
+    <div class="keyword-counter"><span id="ptCount">0</span>/20</div>
+    <div class="keyword-tags" id="penaltyTags"></div>
+    <div class="keyword-input-row">
+      <input type="text" id="ptInput" placeholder="特性を入力してEnter（例: 他責、感情的になる）" onkeydown="addPenalty(event)">
+    </div>
+    <input type="hidden" name="penalty_traits_json" id="penaltyTraitsJson">
+
     <!-- 参考評価基準 -->
     <div class="subsection-title mt-4">参考評価基準</div>
     <div class="field-hint">※合計得点で参考評価をS～Dで表示いたします。 ※得点の範囲を編集でき、編集後は同じ求人の参考評価も全て書き換わります。</div>
@@ -253,6 +263,7 @@
 // ── Initial data ───────────────────────────────────────────────────────────
 let questions = {{ (job.ai_questions | tojson) if job and job.ai_questions else '[]' }};
 let keywords  = {{ (job.keywords | tojson) if job and job.keywords else '[]' }};
+let penaltyTraits = {{ (job.penalty_traits | tojson) if job and job.penalty_traits else '["他人のせいにする","他責","他者の悪口を言う"]' }};
 let gradeCriteria = {{ (job.grade_criteria | tojson) if job and job.grade_criteria else '[{"grade":"S","min":100},{"grade":"A","min":80},{"grade":"B","min":60},{"grade":"C","min":40},{"grade":"D","min":0}]' }};
 
 const MAX_TIME = 2100;
@@ -296,6 +307,30 @@ function addKeyword(e) {
 function removeKeyword(i) {
   keywords.splice(i, 1);
   renderKeywords();
+}
+
+// ── Penalty Traits ──────────────────────────────────────────────────────────
+function renderPenalty() {
+  const container = document.getElementById('penaltyTags');
+  document.getElementById('ptCount').textContent = penaltyTraits.length;
+  container.innerHTML = penaltyTraits.map((pt, i) => `
+    <span class="kw-tag" style="background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.3);color:#fca5a5;">${pt}<button type="button" onclick="removePenalty(${i})">×</button></span>
+  `).join('');
+  document.getElementById('penaltyTraitsJson').value = JSON.stringify(penaltyTraits);
+}
+function addPenalty(e) {
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  const val = document.getElementById('ptInput').value.trim();
+  if (val && penaltyTraits.length < 20 && !penaltyTraits.includes(val)) {
+    penaltyTraits.push(val);
+    renderPenalty();
+  }
+  document.getElementById('ptInput').value = '';
+}
+function removePenalty(i) {
+  penaltyTraits.splice(i, 1);
+  renderPenalty();
 }
 
 // ── Grade criteria ──────────────────────────────────────────────────────────
@@ -394,11 +429,13 @@ function serializeData() {
   document.getElementById('questionsJson').value = JSON.stringify(questions);
   document.getElementById('keywordsJson').value = JSON.stringify(keywords);
   document.getElementById('gradeCriteriaJson').value = JSON.stringify(gradeCriteria);
+  document.getElementById('penaltyTraitsJson').value = JSON.stringify(penaltyTraits);
 }
 
 // ── Init ─────────────────────────────────────────────────────────────────────
 updateScoreTotal();
 renderKeywords();
+renderPenalty();
 renderGrade();
 renderQuestions();
 </script>

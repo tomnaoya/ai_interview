@@ -53,10 +53,12 @@ def build_system_prompt(job: models.Job, applicant: models.Applicant) -> str:
             for c in job.ai_evaluation_criteria
         ])
 
-    # キーワード
+    # キーワード・減点特性
     keywords_text = ""
     if job.keywords:
         keywords_text = "評価時に加点するキーワード: " + "、".join(job.keywords)
+    if job.penalty_traits:
+        keywords_text += ("\n" if keywords_text else "") + "評価時に減点する特性（発言中に見られた場合）: " + "、".join(job.penalty_traits)
 
     # ペルソナ（新形式: ai_role / 旧形式: ai_persona）
     if job.ai_role and job.ai_role.strip():
@@ -122,6 +124,9 @@ def build_evaluation_prompt(job: models.Job, messages: list) -> str:
 
 ## 加点キーワード
 {', '.join(job.keywords or [])}
+
+## 減点特性（発言中にこれらの特性が見られた場合は減点）
+{', '.join(job.penalty_traits or ['他人のせいにする', '他責', '他者の悪口を言う'])}
 
 ## 面接会話記録
 {conversation}

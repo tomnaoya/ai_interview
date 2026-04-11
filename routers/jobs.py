@@ -64,6 +64,7 @@ def _parse_job_form(form_data: dict) -> dict:
         score_speaking=safe_int(form_data.get("score_speaking", 20)),
         score_posture=safe_int(form_data.get("score_posture", 10)),
         keywords=safe_json(form_data.get("keywords_json", "[]"), []),
+        penalty_traits=safe_json(form_data.get("penalty_traits_json", "[]"), []),
         grade_criteria=safe_json(form_data.get("grade_criteria_json", "[]"), []),
         ai_role=form_data.get("ai_role", ""),
         ai_evaluation_prompt=form_data.get("ai_evaluation_prompt", ""),
@@ -139,3 +140,63 @@ async def delete_job(
         job.is_active = False
         db.commit()
     return RedirectResponse("/admin/jobs", status_code=302)
+
+
+@router.post("/jobs/{job_id}/issue-url")
+async def issue_interview_url(
+    job_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    admin=Depends(get_current_admin),
+):
+    """応募者を自動登録して面接URLを発行する"""
+    import secrets as _secrets
+    from datetime import datetime as _dt
+
+    job = db.query(models.Job).get(job_id)
+    if not job:
+        raise HTTPException(404, "求人が見つかりません")
+
+    body = await request.json()
+    name = body.get("name", "").strip()
+    email = body.get("email", "").strip()
+    if not name or not email:
+        raise HTTPException(400, "氏名とメールアドレスは必須です")
+
+    # 応募者を登録（同じメール+求人があれば再利用）
+    applicant = db.query(models.Applicant).filter(
+        models.Applicant.email == email,
+        models.Applicant.job_id == job_id,
+    ).first()
+    if not applicant:
+        applicant = models.Applicant(
+            company_id=job.company_id,
+            job_id=job_id,
+            name=name,
+            name_kana=body.get("name_kana", ""),
+            email=email,
+            phone=body.get("phone", ""),
+            status="interview_scheduled",
+        )
+        db.add(applicant)
+        db.commit()
+        db.refresh(applicant)
+
+    # 面接レコード作成
+    token = _secrets.token_urlsafe(32)
+    interview = models.Interview(
+        applicant_id=applicant.id,
+        job_id=job_id,
+        token=token,
+        status="waiting",
+    )
+    db.add(interview)
+    db.commit()
+
+    base_url = str(request.base_url).rstrip("/")
+    return JSONResponse({
+        "url": f"{base_url}/interview/{token}",
+        "token": token,
+        "applicant_id": applicant.id,
+        "interview_id": interview.id,
+    })
