@@ -842,13 +842,17 @@ function sendMsg(text){
     var d=JSON.parse(r.text);
     addMsg('ai',d.reply);
     if(d.completed||d.reply.indexOf('[INTERVIEW_COMPLETE]')!==-1){
-      isCompleted=true; synth.cancel();
-      // 面接終了: TTSの完了を待たず確実に遷移する
-      speakAll(d.reply, function(){});
-      setTimeout(function(){
+      isCompleted=true;
+      // 面接終了: TTSを読んでから確実に遷移
+      function goCompleted(){
         $('pageInterview').classList.remove('on');
         $('pageCompleted').classList.add('on');
-      },3000); // 読み上げ開始から3秒後に遷移
+      }
+      speakAll(d.reply, function(){
+        setTimeout(goCompleted, 500);
+      });
+      // フェイルセーフ: 10秒後に強制遷移
+      setTimeout(goCompleted, 10000);
     } else {
       speakAll(d.reply, afterSpeak);
     }
