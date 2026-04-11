@@ -320,9 +320,8 @@
             <path id="mp" d="M89,130 Q100,138 111,130" stroke="#e07070" stroke-width="2" fill="rgba(220,100,100,.1)" stroke-linecap="round"/>
             <circle cx="56" cy="122" r="3" fill="#c9a227" opacity=".8"/><circle cx="144" cy="122" r="3" fill="#c9a227" opacity=".8"/>
           </svg>
-            <div class="mouth-bar" id="mouthBar"></div>
-          </div>
         </div>
+      </div>
         </div>
       </div>
       <div class="av-name">AI面接官</div>
@@ -511,7 +510,7 @@ function speakAll(text, onDone){
   var voice=getVoice();
   var resume_iv=setInterval(function(){if(synth.paused)synth.resume();},5000);
   // フォールバック: TTS未完了でも最大15秒後にonDoneを呼ぶ
-  var maxMs=Math.max(8000, clean.length*80);
+  var maxMs=Math.max(15000, clean.length*150);
   var fb=setTimeout(function(){
     if(called) return; called=true;
     clearInterval(resume_iv); synth.cancel();
