@@ -840,9 +840,8 @@ function sendMsg(text){
     clearTimeout(tid); isSending=false; hideType();
     if(!r.ok){showErr('サーバーエラー('+r.status+'): '+r.text);setSt('idle','再試行できます','マイクボタンを押して回答');return;}
     var d=JSON.parse(r.text);
-    var isEnd=d.completed||(d.reply.indexOf('[INTERVIEW_COMPLETE]')!==-1);
     addMsg('ai',d.reply);
-    if(isEnd){
+    if(d.completed){
       isCompleted=true;
       // 面接終了: TTSを読んでから確実に遷移
       var gone=false;

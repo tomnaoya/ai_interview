@@ -288,14 +288,17 @@ async def send_message(token: str, request: Request, db: Session = Depends(get_d
         print(f"[ERROR] All models failed. Last: {detail}")
         raise HTTPException(500, f"AI処理失敗: {detail}")
 
-    db.add(models.InterviewMessage(interview_id=interview.id, role="assistant", content=reply))
+    completed = "[INTERVIEW_COMPLETE]" in reply
+    # Remove the tag from the reply before saving and sending to client
+    clean_reply = reply.replace("[INTERVIEW_COMPLETE]", "").strip()
+
+    db.add(models.InterviewMessage(interview_id=interview.id, role="assistant", content=clean_reply))
     db.commit()
 
-    completed = "[INTERVIEW_COMPLETE]" in reply
     if completed:
         await _complete_interview(interview, db)
 
-    return JSONResponse({"reply": reply, "completed": completed})
+    return JSONResponse({"reply": clean_reply, "completed": completed})
 
 
 async def _complete_interview(interview: models.Interview, db: Session):
