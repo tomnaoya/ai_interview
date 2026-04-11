@@ -168,53 +168,6 @@
     .cb{font-size:14px;color:rgba(255,255,255,.55);line-height:1.9;white-space:pre-line}
     .cc{margin-top:18px;font-size:12px;color:rgba(255,255,255,.3)}
 
-    /* ── Photo avatar animations ── */
-    .av-face{background:#f0e8d8 !important;}
-    .av-photo-container{position:relative;width:100%;height:100%;overflow:hidden;}
-    .av-photo{
-      width:122%;height:122%;
-      object-fit:cover;object-position:42% 10%;
-      margin-left:-11%;margin-top:-3%;
-      transform-origin:50% 38%;
-      animation:headSway 5s ease-in-out infinite;
-    }
-    @keyframes headSway{
-      0%  {transform:rotate(0deg) translateY(0);}
-      25% {transform:rotate(.5deg) translateY(-1.5px);}
-      50% {transform:rotate(0deg) translateY(0);}
-      75% {transform:rotate(-.4deg) translateY(1px);}
-      100%{transform:rotate(0deg) translateY(0);}
-    }
-    .av-photo.talking{animation:headTalk .25s ease-in-out infinite alternate;}
-    @keyframes headTalk{
-      0%  {transform:rotate(0deg) translateY(0);}
-      100%{transform:rotate(.4deg) translateY(-1.5px);}
-    }
-    /* Blink: skin-tone eyelid overlay */
-    .blink-bar{
-      position:absolute;
-      top:33%;left:16%;right:20%;height:12%;
-      background:linear-gradient(to bottom,
-        transparent 0%,rgba(244,196,148,1) 25%,
-        rgba(240,188,138,1) 55%,transparent 100%);
-      border-radius:40% 40% 55% 55%;
-      opacity:0;pointer-events:none;
-      transition:opacity .06s;
-    }
-    /* Mouth overlay: covers smile area during talking */
-    .mouth-bar{
-      position:absolute;
-      top:59%;left:31%;right:27%;height:7%;
-      background:transparent;
-      border-radius:0 0 60% 60%;
-      pointer-events:none;
-      transition:height .1s,background .1s,top .1s;
-    }
-    .mouth-bar.open{
-      background:rgba(50,15,10,.5);
-      height:9%;top:60%;
-    }
-
     /* transcript preview + send button */
     .trbox{width:100%;background:rgba(255,255,255,.07);
       border:1px solid rgba(255,255,255,.15);border-radius:8px;
@@ -295,13 +248,50 @@
           <div class="wv"></div><div class="wv"></div><div class="wv"></div>
         </div>
         <div class="av-ring" id="avR"></div>
-        <div class="av-face" id="avFaceWrap">
-          <div class="av-photo-container" id="avPhotoContainer">
-            <img src="/static/avatars/avatar_main.png" class="av-photo" id="avPhoto" alt="AI面接官">
-            <div class="blink-bar" id="blinkBar"></div>
-            <div class="mouth-bar" id="mouthBar"></div>
-          </div>
-        </div>
+        <div class="av-face">
+          {% if job.avatar_gender == 'male' %}
+          <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+            <defs><radialGradient id="bg" cx="50%" cy="40%" r="60%"><stop offset="0%" stop-color="#2d1f5e"/><stop offset="100%" stop-color="#0f0a2e"/></radialGradient><radialGradient id="sk" cx="50%" cy="35%" r="55%"><stop offset="0%" stop-color="#f5cba7"/><stop offset="100%" stop-color="#e8a87c"/></radialGradient></defs>
+            <circle cx="100" cy="100" r="100" fill="url(#bg)"/>
+            <path d="M50,200 Q60,155 80,148 L100,160 L120,148 Q140,155 150,200Z" fill="#1e3a5f"/>
+            <path d="M80,148 L100,175 L120,148 L100,160Z" fill="#fff" opacity=".9"/>
+            <rect x="86" y="138" width="28" height="20" rx="6" fill="url(#sk)"/>
+            <ellipse cx="100" cy="108" rx="46" ry="52" fill="url(#sk)"/>
+            <path d="M54,90 Q50,56 100,52 Q150,56 146,90Q140,60 100,58Q60,60 54,90Z" fill="#2c1810"/>
+            <ellipse cx="54" cy="112" rx="7" ry="9" fill="#e8a87c"/><ellipse cx="146" cy="112" rx="7" ry="9" fill="#e8a87c"/>
+            <path d="M73,92 Q83,87 93,90" stroke="#2c1810" stroke-width="3" fill="none" stroke-linecap="round"/>
+            <path d="M107,90 Q117,87 127,92" stroke="#2c1810" stroke-width="3" fill="none" stroke-linecap="round"/>
+            <ellipse cx="83" cy="102" rx="10" ry="9" fill="#fff"/><ellipse cx="117" cy="102" rx="10" ry="9" fill="#fff"/>
+            <ellipse cx="84" cy="103" rx="6" ry="6" fill="#3d2b1f"/><ellipse cx="118" cy="103" rx="6" ry="6" fill="#3d2b1f"/>
+            <circle cx="86" cy="101" r="2" fill="#fff"/><circle cx="120" cy="101" r="2" fill="#fff"/>
+            <path d="M96,112 Q100,120 104,112" stroke="#d4956a" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+            <path d="M92,118 Q100,122 108,118" stroke="#d4956a" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+            <path id="mp" d="M88,130 Q100,136 112,130" stroke="#c47a5a" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+          </svg>
+          {% else %}
+          <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+            <defs><radialGradient id="bg" cx="50%" cy="40%" r="60%"><stop offset="0%" stop-color="#2d1f5e"/><stop offset="100%" stop-color="#0f0a2e"/></radialGradient><radialGradient id="sk" cx="50%" cy="35%" r="55%"><stop offset="0%" stop-color="#fde8d0"/><stop offset="100%" stop-color="#f5cba7"/></radialGradient></defs>
+            <circle cx="100" cy="100" r="100" fill="url(#bg)"/>
+            <path d="M45,200 Q55,155 78,148 L100,158 L122,148 Q145,155 155,200Z" fill="#6b48d6" opacity=".85"/>
+            <rect x="87" y="138" width="26" height="20" rx="6" fill="url(#sk)"/>
+            <ellipse cx="100" cy="95" rx="52" ry="60" fill="#3d1c0d"/>
+            <ellipse cx="100" cy="108" rx="44" ry="50" fill="url(#sk)"/>
+            <path d="M56,88 Q52,50 100,46 Q148,50 144,88" fill="#4a2210" stroke="#3d1c0d" stroke-width="2"/>
+            <path d="M56,88 Q50,130 48,165" stroke="#3d1c0d" stroke-width="15" fill="none" stroke-linecap="round"/>
+            <path d="M144,88 Q150,130 152,165" stroke="#3d1c0d" stroke-width="15" fill="none" stroke-linecap="round"/>
+            <ellipse cx="56" cy="112" rx="6.5" ry="8.5" fill="#f5cba7"/><ellipse cx="144" cy="112" rx="6.5" ry="8.5" fill="#f5cba7"/>
+            <path d="M74,92 Q84,86 93,89" stroke="#4a2210" stroke-width="2" fill="none" stroke-linecap="round"/>
+            <path d="M107,89 Q116,86 126,92" stroke="#4a2210" stroke-width="2" fill="none" stroke-linecap="round"/>
+            <ellipse cx="83" cy="102" rx="10.5" ry="9" fill="#fff"/><ellipse cx="117" cy="102" rx="10.5" ry="9" fill="#fff"/>
+            <ellipse cx="83" cy="103" rx="6.5" ry="6.5" fill="#2c1a10"/><ellipse cx="117" cy="103" rx="6.5" ry="6.5" fill="#2c1a10"/>
+            <circle cx="85" cy="101" r="2.2" fill="#fff"/><circle cx="119" cy="101" r="2.2" fill="#fff"/>
+            <ellipse cx="70" cy="116" rx="10" ry="6" fill="rgba(255,150,150,.22)"/>
+            <ellipse cx="130" cy="116" rx="10" ry="6" fill="rgba(255,150,150,.22)"/>
+            <path d="M97,112 Q100,119 103,112" stroke="#e8a87c" stroke-width="1.2" fill="none" stroke-linecap="round"/>
+            <path id="mp" d="M89,130 Q100,138 111,130" stroke="#e07070" stroke-width="2" fill="rgba(220,100,100,.1)" stroke-linecap="round"/>
+            <circle cx="56" cy="122" r="3" fill="#c9a227" opacity=".8"/><circle cx="144" cy="122" r="3" fill="#c9a227" opacity=".8"/>
+          </svg>
+          {% endif %}
         </div>
       </div>
       <div class="av-name">AI面接官</div>
@@ -423,22 +413,20 @@ function setSt(s,text,sub){
   var mb=$('mbtn');
   if(mb) mb.className='mbtn '+(s==='rec'?'rec':s==='spk'||s==='thn'?'off':'idle');
   var sb=$('sbtn'); if(sb) sb.disabled=(s==='spk'||s==='thn');
-  // Photo avatar animations
-  var photo=$('avPhoto');
-  var mbar=$('mouthBar');
-  var bbar=$('blinkBar');
+  // mouth
+  var mp=$('mp');
   if(s==='spk'){
-    if(photo) photo.classList.add('talking');
-    if(!mouthTimer && mbar){
+    if(!mouthTimer&&mp){
       mouthTimer=setInterval(function(){
-        var open=Math.random()>.4;
-        mbar.className = open ? 'mouth-bar open' : 'mouth-bar';
-      },160);
+        var o=Math.random()>.4;
+        mp.setAttribute('d',GENDER==='male'
+          ?(o?'M88,130 Q100,142 112,130':'M88,130 Q100,134 112,130')
+          :(o?'M89,130 Q100,144 111,130':'M89,130 Q100,135 111,130'));
+      },130);
     }
   } else {
-    if(photo) photo.classList.remove('talking');
     if(mouthTimer){clearInterval(mouthTimer);mouthTimer=null;}
-    if(mbar) mbar.className='mouth-bar';
+    if(mp) mp.setAttribute('d',GENDER==='male'?'M88,130 Q100,136 112,130':'M89,130 Q100,138 111,130');
   }
 }
 
@@ -621,10 +609,8 @@ function resetSil(){
   clearSil();
   silTimer=setTimeout(function(){
     if(state==='rec'){
-      // Use final_t first, fall back to interim_t (Chrome may not finalize before silence)
       var txt=(final_t||interim_t).trim();
-      if(txt){stopListening();sendMsg(txt);}
-      else resetSil(); // nothing heard yet, keep waiting
+      if(txt){stopListening();sendMsg(txt);}else resetSil();
     }
   },3000);
 }
@@ -879,23 +865,6 @@ function sendMsg(text){
     setSt('idle','再試行できます','マイクボタンを押して回答');
   });
 }
-// ── Blink animation ─────────────────────────────────────────────────────
-function scheduleBlink(){
-  var bbar=$('blinkBar');
-  if(!bbar) return;
-  var delay=2000+Math.random()*4000; // 2〜6秒ごと
-  setTimeout(function(){
-    // Blink: close (opacity 1) then open (opacity 0)
-    bbar.style.opacity='1';
-    setTimeout(function(){
-      bbar.style.opacity='0';
-      scheduleBlink();
-    },120); // 120ms で目を開く
-  }, delay);
-}
-// Start blinking when interview begins
-function startBlink(){ scheduleBlink(); }
-
 // ── Page Visibility: アプリ復帰時のリセット ─────────────────────────────
 document.addEventListener('visibilitychange', function(){
   if(document.hidden) {
