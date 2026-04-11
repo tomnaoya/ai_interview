@@ -482,7 +482,7 @@ function speakAll(text, onDone){
   var voice=getVoice();
   var resume_iv=setInterval(function(){if(synth.paused)synth.resume();},5000);
   // フォールバック: TTS未完了でも最大15秒後にonDoneを呼ぶ
-  var maxMs=Math.max(8000, clean.length*80);
+  var maxMs=Math.max(20000, clean.length*200+10000);
   var fb=setTimeout(function(){
     if(called) return; called=true;
     clearInterval(resume_iv); synth.cancel();
