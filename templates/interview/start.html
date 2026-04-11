@@ -296,9 +296,30 @@
         </div>
         <div class="av-ring" id="avR"></div>
         <div class="av-face" id="avFaceWrap">
-          <div class="av-photo-container" id="avPhotoContainer">
-            <img src="/static/avatars/avatar_main.png" class="av-photo" id="avPhoto" alt="AI面接官">
-            <div class="blink-bar" id="blinkBar"></div>
+          <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" id="avPhoto">
+            <defs>
+              <radialGradient id="bgF" cx="50%" cy="40%" r="60%"><stop offset="0%" stop-color="#2d1f5e"/><stop offset="100%" stop-color="#0f0a2e"/></radialGradient>
+              <radialGradient id="skinF" cx="50%" cy="35%" r="55%"><stop offset="0%" stop-color="#fde8d0"/><stop offset="100%" stop-color="#f5cba7"/></radialGradient>
+            </defs>
+            <circle cx="100" cy="100" r="100" fill="url(#bgF)"/>
+            <path d="M45,200 Q55,155 78,148 L100,158 L122,148 Q145,155 155,200Z" fill="#6b48d6" opacity=".85"/>
+            <rect x="87" y="138" width="26" height="20" rx="6" fill="url(#skinF)"/>
+            <ellipse cx="100" cy="95" rx="52" ry="60" fill="#3d1c0d"/>
+            <ellipse cx="100" cy="108" rx="44" ry="50" fill="url(#skinF)"/>
+            <path d="M56,88 Q52,50 100,46 Q148,50 144,88" fill="#4a2210" stroke="#3d1c0d" stroke-width="2"/>
+            <path d="M56,88 Q50,130 48,165" stroke="#3d1c0d" stroke-width="15" fill="none" stroke-linecap="round"/>
+            <path d="M144,88 Q150,130 152,165" stroke="#3d1c0d" stroke-width="15" fill="none" stroke-linecap="round"/>
+            <ellipse cx="56" cy="112" rx="6.5" ry="8.5" fill="#f5cba7"/><ellipse cx="144" cy="112" rx="6.5" ry="8.5" fill="#f5cba7"/>
+            <path d="M74,92 Q84,86 93,89" stroke="#4a2210" stroke-width="2" fill="none" stroke-linecap="round"/>
+            <path d="M107,89 Q116,86 126,92" stroke="#4a2210" stroke-width="2" fill="none" stroke-linecap="round"/>
+            <ellipse cx="83" cy="102" rx="10.5" ry="9" fill="#fff"/><ellipse cx="117" cy="102" rx="10.5" ry="9" fill="#fff"/>
+            <ellipse cx="83" cy="103" rx="6.5" ry="6.5" fill="#2c1a10"/><ellipse cx="117" cy="103" rx="6.5" ry="6.5" fill="#2c1a10"/>
+            <circle cx="85" cy="101" r="2.2" fill="#fff"/><circle cx="119" cy="101" r="2.2" fill="#fff"/>
+            <ellipse cx="70" cy="116" rx="10" ry="6" fill="rgba(255,150,150,.22)"/>
+            <ellipse cx="130" cy="116" rx="10" ry="6" fill="rgba(255,150,150,.22)"/>
+            <path id="mp" d="M89,130 Q100,138 111,130" stroke="#e07070" stroke-width="2" fill="rgba(220,100,100,.1)" stroke-linecap="round"/>
+            <circle cx="56" cy="122" r="3" fill="#c9a227" opacity=".8"/><circle cx="144" cy="122" r="3" fill="#c9a227" opacity=".8"/>
+          </svg>
             <div class="mouth-bar" id="mouthBar"></div>
           </div>
         </div>
@@ -423,22 +444,18 @@ function setSt(s,text,sub){
   var mb=$('mbtn');
   if(mb) mb.className='mbtn '+(s==='rec'?'rec':s==='spk'||s==='thn'?'off':'idle');
   var sb=$('sbtn'); if(sb) sb.disabled=(s==='spk'||s==='thn');
-  // Photo avatar animations
-  var photo=$('avPhoto');
-  var mbar=$('mouthBar');
-  var bbar=$('blinkBar');
+  // SVG avatar mouth animation
+  var mp=$('mp');
   if(s==='spk'){
-    if(photo) photo.classList.add('talking');
-    if(!mouthTimer && mbar){
+    if(!mouthTimer&&mp){
       mouthTimer=setInterval(function(){
-        var open=Math.random()>.4;
-        mbar.className = open ? 'mouth-bar open' : 'mouth-bar';
-      },160);
+        var o=Math.random()>.4;
+        mp.setAttribute('d',o?'M89,130 Q100,144 111,130':'M89,130 Q100,135 111,130');
+      },130);
     }
   } else {
-    if(photo) photo.classList.remove('talking');
     if(mouthTimer){clearInterval(mouthTimer);mouthTimer=null;}
-    if(mbar) mbar.className='mouth-bar';
+    if(mp) mp.setAttribute('d','M89,130 Q100,138 111,130');
   }
 }
 
@@ -494,7 +511,7 @@ function speakAll(text, onDone){
   var voice=getVoice();
   var resume_iv=setInterval(function(){if(synth.paused)synth.resume();},5000);
   // フォールバック: TTS未完了でも最大15秒後にonDoneを呼ぶ
-  var maxMs=Math.max(20000, clean.length*200+10000);
+  var maxMs=Math.max(8000, clean.length*80);
   var fb=setTimeout(function(){
     if(called) return; called=true;
     clearInterval(resume_iv); synth.cancel();
