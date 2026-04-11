@@ -518,7 +518,11 @@ function afterSpeak(){
     if(PT){
       setSt('idle','マイクボタンを押して回答','押している間録音・離すと送信');
     } else {
-      startListening();
+      // 600ms待機: スピーカーのエコーがマイクに入るのを防ぐ
+      setSt('idle','マイクを準備中...','');
+      setTimeout(function(){
+        if(!isCompleted && state!=='thn' && state!=='spk') startListening();
+      }, 600);
     }
   } else {
     setSt('idle','回答を入力してください','テキストを入力して送信ボタンを押してください');
@@ -597,7 +601,7 @@ function makeRec(){
 
 // デスクトップ用: 連続認識の開始
 function startListening(){
-  if(isCompleted||isListening) return;
+  if(isCompleted||isListening||state==='spk'||state==='thn') return;
   clearWatch();
   isListening=true;
   recognition=null;
