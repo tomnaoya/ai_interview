@@ -545,15 +545,14 @@ function makeRec(){
   var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
   recognition=new SR();
   recognition.lang=LANG_CODE;
-  // iOS: continuous=false（プレストークで明示的に停止するため不要）
-  // Android: continuous=true（長文発話の途中切断を防ぐ）
-  // Desktop: continuous=true
-  recognition.continuous = isIOS ? false : true;
+  // モバイル(iOS/Android)プレストーク: continuous=false（重複防止）
+  // Desktop: continuous=true（連続認識）
+  recognition.continuous = PT ? false : true;
   recognition.interimResults=true;
   recognition.onresult=function(e){
     var int_='', i;
-    if(isIOS){
-      // iOS: continuous=false → 毎回全体再構築（重複防止）
+    if(PT){
+      // モバイル(iOS/Android): continuous=false → 毎回全体再構築（重複防止）
       var f='';
       for(i=0;i<e.results.length;i++){
         if(e.results[i].isFinal) f+=e.results[i][0].transcript;
@@ -561,18 +560,18 @@ function makeRec(){
       }
       final_t=f;
     } else {
-      // Android + Desktop: continuous=true → resultIndexから新規分だけ追加
+      // Desktop: continuous=true → resultIndexから新規分だけ追加
       for(i=e.resultIndex;i<e.results.length;i++){
         if(e.results[i].isFinal) final_t+=e.results[i][0].transcript;
         else int_+=e.results[i][0].transcript;
       }
     }
     interim_t=int_;
-    var combined=(final_t+int_).trim();
+    // Android: savedTxtに前セッション分が退避されている場合は結合
+    var combined=((savedTxt?savedTxt+' ':'')+final_t+int_).trim();
     var btr=$('btr'); if(btr) btr.textContent=combined;
     // モバイル: プレビューとボタンを表示
     if(PT && combined){
-      savedTxt=combined;
       var tb=$('trbox'); if(tb){ tb.textContent=combined; tb.className='trbox on'; }
       var sn=$('sendNow'); if(sn) sn.className='sendnow on';
     }
@@ -581,8 +580,17 @@ function makeRec(){
   };
   recognition.onend=function(){
     if(PT){
-      // モバイル(iOS/Android): press-to-talk → ptEnd/fallTimerが処理
-      if(isRec) return;
+      // モバイル(iOS/Android): press-to-talk
+      if(isRec){
+        // Android: 長い発言で自動停止 → テキスト退避して再起動
+        if(isAndroid){
+          savedTxt=(savedTxt+' '+final_t).trim();
+          final_t=''; interim_t='';
+          recognition=null;
+          if(makeRec()){ try{recognition.start();}catch(e){} }
+        }
+        return;
+      }
       if(fallTimer){ clearTimeout(fallTimer); fallTimer=null; }
       if(ptSent) return;
       ptSent=true;
@@ -658,7 +666,7 @@ function watchdogStart(){
       stopListening();
       setTimeout(startListening, 300);
     }
-  },10000);
+  },30000);
 }
 function clearWatch(){ if(watchTimer){ clearTimeout(watchTimer); watchTimer=null; } }
 
@@ -693,7 +701,7 @@ function ptEnd(e){
   isRec=false; ptSent=false;
   if(isIOS) stopMic();
   setSt('idle','確認中...','');
-  var nowTxt=(final_t+interim_t).trim();
+  var nowTxt=((savedTxt?savedTxt+' ':'')+final_t+interim_t).trim();
   if(nowTxt){
     savedTxt=nowTxt;
     var tb=$('trbox'); if(tb){ tb.textContent=nowTxt; tb.className='trbox on'; }
@@ -706,7 +714,7 @@ function ptEnd(e){
     fallTimer=null;
     if(ptSent) return;
     ptSent=true;
-    var txt=(final_t+interim_t).trim()||savedTxt; interim_t=''; savedTxt='';
+    var txt=((savedTxt?savedTxt+' ':'')+final_t+interim_t).trim(); interim_t=''; savedTxt='';
     var tb=$('trbox'); if(tb){ tb.textContent=''; tb.className='trbox'; }
     var sn=$('sendNow'); if(sn) sn.className='sendnow';
     if(txt) sendMsg(txt);
