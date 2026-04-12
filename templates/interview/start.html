@@ -631,20 +631,9 @@ function startListening(){
     recognition.start();
     if(isIOS) startMic();
     if(!PT){
-      // 常にタイマー開始
-      // final_tにテキストがある場合（再起動）は長めの猶予を与える
-      if(final_t.trim()){
-        clearSil();
-        silTimer=setTimeout(function(){
-          if(state==='rec'){
-            var txt=(final_t||interim_t).trim();
-            if(txt){ stopListening(); sendMsg(txt); }
-            else resetSil();
-          }
-        }, 6000); // 再起動後は6秒待つ（発言再開の余裕）
-      } else {
-        resetSil(); // 初回は通常3秒
-      }
+      // タイマーはonresultからのみ開始する
+      // startListening（再起動時含む）ではタイマーを触らない
+      // → 最後にonresultが来てから3秒後に送信される
       watchdogStart();
     }
   } catch(e){
