@@ -367,6 +367,7 @@ var recognition = null;
 var voices = [];
 var mouthTimer = null;
 var silTimer   = null;
+var lastResultTime = 0; // 最後にonresultが来た時刻
 var watchTimer = null;
 var fallTimer  = null;
 
@@ -576,7 +577,10 @@ function makeRec(){
       var sn=$('sendNow'); if(sn) sn.className='sendnow on';
     }
     // デスクトップ: 沈黙タイマーリセット
-    if(!PT) resetSil();
+    if(!PT){
+      lastResultTime = Date.now();
+      resetSil();
+    }
   };
   recognition.onend=function(){
     if(PT){
@@ -602,9 +606,13 @@ function makeRec(){
       if(state==='rec' && !isCompleted){
         isListening=false;
         startListening();
-        // final_tがあってタイマーが動いていなければ開始
-        // （ユーザーが話し終えた後にonendが来たケース）
-        if(final_t.trim() && !silTimer) resetSil();
+        // 最後のonresultから既に3秒以上経過 → ユーザーは話し終えている
+        if(final_t.trim() && lastResultTime>0 && Date.now()-lastResultTime>=3000){
+          stopListening(); sendMsg(final_t.trim());
+        } else if(final_t.trim() && !silTimer){
+          // タイマーが動いていなければ開始
+          resetSil();
+        }
       }
     }
   };
@@ -656,12 +664,24 @@ function stopListening(){
 function resetSil(){
   clearSil();
   silTimer=setTimeout(function(){
-    if(state==='rec'){
+    silTimer=null;
+    if(state!=='rec') return;
+    // 最後のonresultから実際に3秒経過しているか確認
+    var elapsed=Date.now()-lastResultTime;
+    if(elapsed>=3000){
       var txt=(final_t||interim_t).trim();
       if(txt){ stopListening(); sendMsg(txt); }
-      else resetSil();
+      // テキストなし → 待機継続
+    } else {
+      // まだ3秒経っていない → 残り時間だけ待つ
+      silTimer=setTimeout(function(){
+        silTimer=null;
+        if(state!=='rec') return;
+        var txt=(final_t||interim_t).trim();
+        if(txt){ stopListening(); sendMsg(txt); }
+      }, 3000-elapsed);
     }
-  },3000); // 3秒の沈黙で送信
+  },3000);
 }
 function clearSil(){ if(silTimer){ clearTimeout(silTimer); silTimer=null; } }
 
@@ -863,7 +883,7 @@ function doStart(){
 function sendMsg(text){
   if(isCompleted||isSending) return;
   if(text.length>500) text=text.slice(0,500);
-  isSending=true; ptSent=true; savedTxt='';
+  isSending=true; ptSent=true; savedTxt=''; lastResultTime=0;
   final_t=''; interim_t=''; // 前回の発言をクリア
   isListening=false; clearSil(); clearWatch();
   if(fallTimer){ clearTimeout(fallTimer); fallTimer=null; }
