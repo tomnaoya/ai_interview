@@ -889,47 +889,54 @@ function doStart(){
 // ── PC音声入力（送信ボタン方式） ──────────────────────────────────
 var pcRec=null, pcFinal='', pcInterim='', pcMicOn=false;
 
-function pcStartMic(isRestart){
+function pcStartMic(keepText){
   if(isCompleted||isSending) return;
-  // 再起動時はテキストを保持（新規ターン開始時のみクリア）
-  if(!isRestart){
+  // keepText=trueのとき既存テキスト保持、falseは新規ターン開始
+  if(!keepText){
     pcFinal=''; pcInterim='';
     var btr=$('pcBtr'); if(btr) btr.textContent='';
     var sb=$('pcSendBtn'); if(sb) sb.style.display='none';
   }
   var mb=$('pcMbtn'); if(mb) mb.className='mbtn rec';
   pcMicOn=true;
+
   var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
   if(!SR){ toText(); return; }
+
+  // セッションごとの確定テキスト（pcFinalに蓄積）
+  var sessionFinal='';
   pcRec=new SR();
   pcRec.lang=LANG_CODE;
-  pcRec.continuous=true;
+  pcRec.continuous=false; // セッション単位で確実に区切る
   pcRec.interimResults=true;
+
   pcRec.onresult=function(e){
     var f='', int_='', i;
-    for(i=e.resultIndex;i<e.results.length;i++){
+    // このセッション内をゼロから再構築（continuous=falseなので安全）
+    for(i=0;i<e.results.length;i++){
       if(e.results[i].isFinal) f+=e.results[i][0].transcript;
       else int_+=e.results[i][0].transcript;
     }
-    pcFinal+=f; pcInterim=int_;
-    var combined=(pcFinal+int_).trim();
+    sessionFinal=f; pcInterim=int_;
+    var combined=(pcFinal+f+int_).trim();
     var btr=$('pcBtr'); if(btr) btr.textContent=combined;
     var sb=$('pcSendBtn'); if(sb) sb.style.display=combined?'inline-block':'none';
   };
+
   pcRec.onend=function(){
-    // 認識継続（ユーザーが送信ボタンを押すまで）
+    // セッションの確定テキストをpcFinalに蓄積
+    pcFinal+=sessionFinal; sessionFinal=''; pcInterim='';
+    // マイクON中なら即座に次セッション開始
     if(pcMicOn&&!isCompleted&&state!=='thn'&&state!=='spk'){
-      try{
-        pcRec.start();
-      }catch(e){
-        // 失敗時: pcFinalを保持したまま即座に新SRで再起動
-        if(pcMicOn&&!isCompleted) pcStartMic(true);
-      }
+      pcStartMic(true); // テキスト保持で再起動
     }
   };
+
   pcRec.onerror=function(e){
     if(e.error==='not-allowed'){ hasSR=false; toText(); }
+    // その他エラーは無視して継続
   };
+
   try{ pcRec.start(); }catch(e){ toText(); }
 }
 
