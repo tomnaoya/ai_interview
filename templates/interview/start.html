@@ -606,13 +606,8 @@ function makeRec(){
       if(state==='rec' && !isCompleted){
         isListening=false;
         startListening();
-        // 最後のonresultから既に3秒以上経過 → ユーザーは話し終えている
-        if(final_t.trim() && lastResultTime>0 && Date.now()-lastResultTime>=3000){
-          stopListening(); sendMsg(final_t.trim());
-        } else if(final_t.trim() && !silTimer){
-          // タイマーが動いていなければ開始
-          resetSil();
-        }
+        // タイマーが動いていなければ開始（lastResultTimeが設定済みの場合のみ）
+        if(!silTimer) resetSil();
       }
     }
   };
@@ -661,17 +656,18 @@ function stopListening(){
 }
 
 // 沈黙検出（デスクトップ用）
+// onresultが来てlastResultTimeが設定された後にのみ有効
 function resetSil(){
+  if(!lastResultTime) return; // まだ一度も音声入力がない場合は無視
   clearSil();
   silTimer=setTimeout(function(){
     silTimer=null;
-    if(state!=='rec') return;
-    // 最後のonresultから実際に3秒経過しているか確認
+    if(state!=='rec' || !lastResultTime) return;
     var elapsed=Date.now()-lastResultTime;
     if(elapsed>=3000){
+      // 最後の文字出力から実際に3秒経過 → 送信
       var txt=(final_t||interim_t).trim();
       if(txt){ stopListening(); sendMsg(txt); }
-      // テキストなし → 待機継続
     } else {
       // まだ3秒経っていない → 残り時間だけ待つ
       silTimer=setTimeout(function(){
@@ -679,7 +675,7 @@ function resetSil(){
         if(state!=='rec') return;
         var txt=(final_t||interim_t).trim();
         if(txt){ stopListening(); sendMsg(txt); }
-      }, 3000-elapsed);
+      }, 3000-elapsed+100); // +100msバッファ
     }
   },3000);
 }
