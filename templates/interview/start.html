@@ -327,9 +327,6 @@
           <div class="bs" id="pcBs">AIが話し終わるまでお待ちください</div>
           <div id="pcBtr" style="font-size:13px;color:rgba(255,255,255,.85);margin-top:4px;min-height:18px;word-break:break-all;"></div>
         </div>
-        <button id="pcSendBtn" onclick="pcSend()" style="display:none;padding:8px 18px;border-radius:8px;background:var(--g);color:#fff;border:none;font-size:13px;font-weight:600;cursor:pointer;flex-shrink:0;">
-          <i class="fas fa-paper-plane"></i> 送信
-        </button>
         <span class="sw" onclick="toText()" style="flex-shrink:0;">テキスト入力</span>
       </div>
       <!-- Text input (fallback) -->
@@ -438,7 +435,7 @@ function setSt(s, text, sub){
       pcMicOn=false;
       try{ if(pcRec) pcRec.stop(); }catch(e){}
       var pcmb=$('pcMbtn'); if(pcmb) pcmb.className='mbtn off';
-      var pcsb=$('pcSendBtn'); if(pcsb) pcsb.style.display='none';
+      
     }
   }
 
@@ -560,7 +557,7 @@ function afterSpeak(){
       setSt('idle','マイクボタンを押して回答','押している間録音・離すと送信');
     } else {
       // PC: 送信ボタン方式 - 500ms後にマイクON
-      setSt('idle','お話しください','話し終わったら「送信」ボタンを押してください');
+      setSt('idle','お話しください','3秒間の沈黙で自動送信されます');
       setTimeout(function(){
         if(!isCompleted && state!=='thn' && state!=='spk') pcStartMic();
       }, 500);
@@ -887,24 +884,42 @@ function doStart(){
 }
 
 // ── PC音声入力（送信ボタン方式） ──────────────────────────────────
-var pcRec=null, pcSaved='', pcFinal='', pcInterim='', pcMicOn=false, pcGen=0;
+var pcRec=null, pcSaved='', pcFinal='', pcInterim='', pcMicOn=false, pcGen=0, pcSilTimer=null;
 
 function pcStartMic(){
   if(isCompleted||isSending) return;
   // 新規ターン開始: 全テキストをクリア
   pcGen++; pcSaved=''; pcFinal=''; pcInterim='';
   var btr=$('pcBtr'); if(btr) btr.textContent='';
-  var sb=$('pcSendBtn'); if(sb) sb.style.display='none';
+  
   var mb=$('pcMbtn'); if(mb) mb.className='mbtn rec';
   pcMicOn=true;
   pcRecStart();
 }
 
+function pcResetSilTimer(){
+  if(pcSilTimer){ clearTimeout(pcSilTimer); pcSilTimer=null; }
+  pcSilTimer=setTimeout(function(){
+    pcSilTimer=null;
+    if(!pcMicOn||isCompleted||isSending) return;
+    var txt=(pcSaved+' '+pcFinal+' '+pcInterim).trim();
+    if(txt) pcAutoSend(txt);
+  }, 3000);
+}
+
+function pcAutoSend(txt){
+  pcMicOn=false;
+  pcGen++;
+  if(pcSilTimer){ clearTimeout(pcSilTimer); pcSilTimer=null; }
+  try{ if(pcRec) pcRec.stop(); }catch(e){}
+  var mb=$('pcMbtn'); if(mb) mb.className='mbtn off';
+  var btr=$('pcBtr'); if(btr) btr.textContent='';
+  sendMsg(txt);
+}
+
 function pcRecStart(){
   var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
   if(!SR){ toText(); return; }
-
-  // 世代カウンターで古いセッションのonendを無視する
   var myGen=pcGen;
 
   pcRec=new SR();
@@ -913,16 +928,17 @@ function pcRecStart(){
   pcRec.interimResults=true;
 
   pcRec.onresult=function(e){
-    if(myGen!==pcGen) return; // 古いセッションは無視
+    if(myGen!==pcGen) return;
     var f='', int_='', i;
     for(i=0;i<e.results.length;i++){
       if(e.results[i].isFinal) f+=e.results[i][0].transcript;
       else int_+=e.results[i][0].transcript;
     }
     pcFinal=f; pcInterim=int_;
-    var combined=(pcSaved+f+int_).trim();
+    var combined=(pcSaved+' '+f+' '+int_).trim();
     var btr=$('pcBtr'); if(btr) btr.textContent=combined;
-    var sb=$('pcSendBtn'); if(sb) sb.style.display=combined?'inline-block':'none';
+    // 音声が来たら沈黙タイマーリセット
+    pcResetSilTimer();
   };
 
   pcRec.onerror=function(e){
@@ -930,11 +946,11 @@ function pcRecStart(){
   };
 
   pcRec.onend=function(){
-    if(myGen!==pcGen) return; // 古いセッションは無視
+    if(myGen!==pcGen) return;
     if(pcMicOn&&!isCompleted&&state!=='thn'&&state!=='spk'){
       pcSaved=(pcSaved+' '+pcFinal).trim();
       pcFinal=''; pcInterim='';
-      pcGen++; // 世代を進める
+      pcGen++;
       setTimeout(function(){ if(pcMicOn&&!isCompleted) pcRecStart(); }, 100);
     }
   };
@@ -959,14 +975,7 @@ function pcToggleMic(){
   }
 }
 
-function pcSend(){
-  var txt=(pcSaved+pcFinal+pcInterim).trim();
-  if(!txt||isSending||isCompleted) return;
-  pcStopMic();
-  var btr=$('pcBtr'); if(btr) btr.textContent='';
-  var sb=$('pcSendBtn'); if(sb) sb.style.display='none';
-  sendMsg(txt);
-}
+// pcSend is now replaced by pcAutoSend (silence-triggered)
 
 // ── 送信 ─────────────────────────────────────────────────────────
 function sendMsg(text){
