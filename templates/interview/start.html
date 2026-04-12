@@ -889,7 +889,7 @@ function doStart(){
 // ── PC音声入力（送信ボタン方式） ──────────────────────────────────
 var pcRec=null, pcFinal='', pcInterim='', pcMicOn=false;
 
-function pcStartMic(isRestart){\
+function pcStartMic(isRestart){
   if(isCompleted||isSending) return;
   // 再起動時はテキストを保持（新規ターン開始時のみクリア）
   if(!isRestart){
