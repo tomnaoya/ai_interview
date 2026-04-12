@@ -425,6 +425,14 @@ function setSt(s, text, sub){
   if(mb) mb.className='mbtn '+(s==='rec'?'rec':s==='spk'||s==='thn'?'off':'idle');
   if(sb) sb.disabled=(s==='spk'||s==='thn');
 
+  // PC: AI発話中・考え中はマイクを停止
+  if(!PT && (s==='spk'||s==='thn')){
+    pcMicOn=false;
+    try{ if(pcRec) pcRec.stop(); }catch(e){}
+    var pcmb=$('pcMbtn'); if(pcmb) pcmb.className='mbtn off';
+    var pcsb=$('pcSendBtn'); if(pcsb) pcsb.style.display='none';
+  }
+
   // 口アニメーション
   if(s==='spk'){
     if(!mouthTimer && mp){
@@ -915,9 +923,14 @@ function pcStopMic(){
 }
 
 function pcToggleMic(){
-  if(state==='spk'||state==='thn'||isCompleted) return;
-  if(pcMicOn){ pcStopMic(); var mb=$('pcMbtn'); if(mb) mb.className='mbtn idle'; }
-  else pcStartMic();
+  if(state==='spk'||state==='thn'||isSending||isCompleted) return;
+  if(pcMicOn){
+    pcMicOn=false;
+    try{ if(pcRec) pcRec.stop(); }catch(e){}
+    var mb=$('pcMbtn'); if(mb) mb.className='mbtn idle';
+  } else {
+    pcStartMic();
+  }
 }
 
 function pcSend(){
