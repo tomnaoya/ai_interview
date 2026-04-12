@@ -598,11 +598,11 @@ function makeRec(){
       if(txt) sendMsg(txt);
       else setSt('idle','マイクボタンを押して回答','押している間録音・離すと送信');
     } else {
-      // デスクトップ: onendでは送信しない。常に再起動して沈黙タイマーに任せる
-      // （onendで即送信すると発言途中でも切られてしまう）
+      // デスクトップ: onendでは送信しない。再起動して沈黙タイマーに任せる
       if(state==='rec' && !isCompleted){
+        clearSil(); // 再起動中の誤検知を防ぐため一旦クリア
         isListening=false;
-        startListening();
+        startListening(); // startListening内でresetSilが再設定される
       }
     }
   };
@@ -652,7 +652,7 @@ function resetSil(){
       if(txt){ stopListening(); sendMsg(txt); }
       else resetSil();
     }
-  },4000); // 4秒: 発言の間を考慮
+  },5000); // 5秒: 発言の間・認識再起動のギャップを考慮
 }
 function clearSil(){ if(silTimer){ clearTimeout(silTimer); silTimer=null; } }
 
