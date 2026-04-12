@@ -916,7 +916,15 @@ function pcStartMic(){
   pcRec.onend=function(){
     // 認識継続（ユーザーが送信ボタンを押すまで）
     if(pcMicOn&&!isCompleted&&state!=='thn'&&state!=='spk'){
-      try{ pcRec.start(); }catch(e){}
+      // 同じオブジェクトで再起動を試み、失敗したら新規作成
+      try{
+        pcRec.start();
+      }catch(e){
+        // 新規SRオブジェクトで再起動
+        setTimeout(function(){
+          if(pcMicOn&&!isCompleted) pcStartMic();
+        }, 100);
+      }
     }
   };
   pcRec.onerror=function(e){
