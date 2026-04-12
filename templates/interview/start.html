@@ -889,51 +889,41 @@ function doStart(){
 // ── PC音声入力（送信ボタン方式） ──────────────────────────────────
 var pcRec=null, pcBase='', pcFinal='', pcInterim='', pcMicOn=false;
 
-function pcStartMic(isRestart){
+function pcStartMic(){
   if(isCompleted||isSending) return;
-  // 新規ターン開始時のみベーステキストをクリア
-  if(!isRestart){
-    pcBase=''; pcFinal=''; pcInterim='';
-    var btr=$('pcBtr'); if(btr) btr.textContent='';
-    var sb=$('pcSendBtn'); if(sb) sb.style.display='none';
-  }
+  // テキストをクリアして新しいターン開始
+  pcBase=''; pcFinal=''; pcInterim='';
+  var btr=$('pcBtr'); if(btr) btr.textContent='';
+  var sb=$('pcSendBtn'); if(sb) sb.style.display='none';
   var mb=$('pcMbtn'); if(mb) mb.className='mbtn rec';
   pcMicOn=true;
 
   var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
   if(!SR){ toText(); return; }
 
+  // SRオブジェクトを1つ作成し送信ボタンが押されるまで使い続ける
   pcRec=new SR();
   pcRec.lang=LANG_CODE;
   pcRec.continuous=true;
   pcRec.interimResults=true;
 
   pcRec.onresult=function(e){
-    // このセッションの結果をゼロから再構築
+    // results配列全体をゼロから再構築（cumulative）
     var f='', int_='', i;
     for(i=0;i<e.results.length;i++){
       if(e.results[i].isFinal) f+=e.results[i][0].transcript;
       else int_+=e.results[i][0].transcript;
     }
     pcFinal=f; pcInterim=int_;
-    // 表示: 過去セッション蓄積 + 現セッション
-    var combined=(pcBase+f+int_).trim();
+    var combined=(f+int_).trim();
     var btr=$('pcBtr'); if(btr) btr.textContent=combined;
     var sb=$('pcSendBtn'); if(sb) sb.style.display=combined?'inline-block':'none';
   };
 
+  // onendが発火した場合も同じオブジェクトで即再起動
   pcRec.onend=function(){
     if(pcMicOn&&!isCompleted&&state!=='thn'&&state!=='spk'){
-      // 現セッションの確定テキストをベースに蓄積
-      pcBase+=pcFinal; pcFinal=''; pcInterim='';
-      // 同じオブジェクトで再起動（瞬時・マイク再接続なし）
-      try{
-        pcRec.start();
-      }catch(e){
-        // 失敗時のみ新SRオブジェクトで再起動
-        pcMicOn=false;
-        pcStartMic(true);
-      }
+      try{ pcRec.start(); }catch(e){}
     }
   };
 
@@ -962,7 +952,7 @@ function pcToggleMic(){
 }
 
 function pcSend(){
-  var txt=(pcBase+pcFinal+pcInterim).trim();
+  var txt=(pcFinal+pcInterim).trim();
   if(!txt||isSending||isCompleted) return;
   pcStopMic();
   var btr=$('pcBtr'); if(btr) btr.textContent='';
