@@ -545,23 +545,27 @@ function makeRec(){
   var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
   recognition=new SR();
   recognition.lang=LANG_CODE;
-  recognition.continuous=!PT;   // デスクトップ=true, モバイル=false
+  // iOS: continuous=false（プレストークで明示的に停止するため不要）
+  // Android: continuous=true（長文発話の途中切断を防ぐ）
+  // Desktop: continuous=true
+  recognition.continuous = isIOS ? false : true;
   recognition.interimResults=true;
   recognition.onresult=function(e){
-    var f='', int_='', i;
-    // デスクトップ: resultIndexから新規分だけ追加
-    if(!PT){
-      for(i=e.resultIndex;i<e.results.length;i++){
-        if(e.results[i].isFinal) final_t+=e.results[i][0].transcript;
-        else int_+=e.results[i][0].transcript;
-      }
-    } else {
-      // モバイル: 毎回全体を再構築（continuous=false時の重複防止）
+    var int_='', i;
+    if(isIOS){
+      // iOS: continuous=false → 毎回全体再構築（重複防止）
+      var f='';
       for(i=0;i<e.results.length;i++){
         if(e.results[i].isFinal) f+=e.results[i][0].transcript;
         else int_+=e.results[i][0].transcript;
       }
       final_t=f;
+    } else {
+      // Android + Desktop: continuous=true → resultIndexから新規分だけ追加
+      for(i=e.resultIndex;i<e.results.length;i++){
+        if(e.results[i].isFinal) final_t+=e.results[i][0].transcript;
+        else int_+=e.results[i][0].transcript;
+      }
     }
     interim_t=int_;
     var combined=(final_t+int_).trim();
@@ -577,7 +581,7 @@ function makeRec(){
   };
   recognition.onend=function(){
     if(PT){
-      // モバイル: press-to-talk → ptEnd/fallTimerが処理
+      // モバイル(iOS/Android): press-to-talk → ptEnd/fallTimerが処理
       if(isRec) return;
       if(fallTimer){ clearTimeout(fallTimer); fallTimer=null; }
       if(ptSent) return;
