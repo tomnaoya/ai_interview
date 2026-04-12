@@ -368,7 +368,6 @@ var voices = [];
 var mouthTimer = null;
 var silTimer   = null;
 var lastResultTime = 0; // 最後にonresultが来た時刻
-var echoGate = false; // TTS残響除去フラグ
 var watchTimer = null;
 var fallTimer  = null;
 
@@ -530,11 +529,11 @@ function afterSpeak(){
     if(PT){
       setSt('idle','マイクボタンを押して回答','押している間録音・離すと送信');
     } else {
-      // 即座に認識開始（冒頭欠けを防ぐ）最初400msはエコーゲートで残響除去
+      // 250ms待機してから認識開始（TTS残響除去）
       state='idle';
-      echoGate=true;
-      setTimeout(function(){ echoGate=false; }, 400);
-      startListening();
+      setTimeout(function(){
+        if(!isCompleted && state!=='thn') startListening();
+      }, 250);
     }
   } else {
     setSt('idle','回答を入力してください','テキストを入力して送信ボタンを押してください');
@@ -551,7 +550,6 @@ function makeRec(){
   recognition.continuous = !PT;
   recognition.interimResults=true;
   recognition.onresult=function(e){
-    if(!PT && echoGate) return; // TTS残響期間は無視
     var int_='', i;
     if(PT){
       // モバイル(iOS/Android): continuous=false → 毎回全体再構築（重複防止）
@@ -605,15 +603,11 @@ function makeRec(){
     } else {
       // デスクトップ: onendでは送信しない。再起動して沈黙タイマーに任せる
       if(state==='rec' && !isCompleted){
-        // タイマーはonresultからのみ動かす（継続カウント）
+        // 非同期で再起動（同期onend内での再起動を避ける）
         isListening=false;
-        // 同じrecognitionオブジェクトで再起動（ギャップを最小化）
-        try{
-          recognition.start();
-          isListening=true;
-        }catch(e2){
-          startListening(); // 失敗したら新規作成
-        }
+        setTimeout(function(){
+          if(state==='rec' && !isCompleted) startListening();
+        }, 50);
       }
     }
   };
