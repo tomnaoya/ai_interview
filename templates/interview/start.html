@@ -600,9 +600,11 @@ function makeRec(){
     } else {
       // デスクトップ: onendでは送信しない。再起動して沈黙タイマーに任せる
       if(state==='rec' && !isCompleted){
-        clearSil(); // 再起動後にフル時間確保するためリセット
         isListening=false;
         startListening();
+        // final_tがあってタイマーが動いていなければ開始
+        // （ユーザーが話し終えた後にonendが来たケース）
+        if(final_t.trim() && !silTimer) resetSil();
       }
     }
   };
@@ -626,7 +628,7 @@ function startListening(){
     var btr=$('btr'); if(btr) btr.textContent='';
   }
   // デスクトップ: final_t・表示・タイマーは保持（再起動中も継続）
-  setSt('rec','お話しください...','5秒間の沈黙で自動送信されます');
+  setSt('rec','お話しください...','3秒間の沈黙で自動送信されます');
   try{
     recognition.start();
     if(isIOS) startMic();
