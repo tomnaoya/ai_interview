@@ -922,18 +922,23 @@ function pcRecStart(){
     var sb=$('pcSendBtn'); if(sb) sb.style.display=combined?'inline-block':'none';
   };
 
-  pcRec.onend=function(){
-    // セッション終了: テキスト退避して即再起動（Androidと同じ）
-    if(pcMicOn&&!isCompleted&&state!=='thn'&&state!=='spk'){
+  pcRec.onerror=function(e){
+    if(e.error==='not-allowed'){ hasSR=false; toText(); return; }
+    // その他エラー: テキスト退避して再起動
+    if(pcMicOn&&!isCompleted){
       pcSaved=(pcSaved+' '+pcFinal).trim();
       pcFinal=''; pcInterim='';
-      pcRecStart(); // 新SRオブジェクトで即再起動
+      setTimeout(function(){ if(pcMicOn&&!isCompleted) pcRecStart(); }, 150);
     }
   };
 
-  pcRec.onerror=function(e){
-    if(e.error==='not-allowed'){ hasSR=false; toText(); }
-    // その他エラーは無視（onendで再起動される）
+  pcRec.onend=function(){
+    // セッション終了: テキスト退避して再起動（少し待ってから）
+    if(pcMicOn&&!isCompleted&&state!=='thn'&&state!=='spk'){
+      pcSaved=(pcSaved+' '+pcFinal).trim();
+      pcFinal=''; pcInterim='';
+      setTimeout(function(){ if(pcMicOn&&!isCompleted) pcRecStart(); }, 100);
+    }
   };
 
   try{ pcRec.start(); }catch(e){ toText(); }
