@@ -921,9 +921,12 @@ function pcStartMic(){
   };
 
   // onendが発火した場合も同じオブジェクトで即再起動
+  // selfで自分自身を参照（古いオブジェクトの遅延発火を防ぐ）
+  var self=pcRec;
   pcRec.onend=function(){
+    if(self!==pcRec) return; // 新しいターンのオブジェクトに差し替わっていたら無視
     if(pcMicOn&&!isCompleted&&state!=='thn'&&state!=='spk'){
-      try{ pcRec.start(); }catch(e){}
+      try{ self.start(); }catch(e){}
     }
   };
 
