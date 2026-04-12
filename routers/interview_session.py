@@ -17,9 +17,8 @@ client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY", ""))
 # 正しいモデル名
 # モデルIDの優先順位リスト（上から順に試みる）
 MODELS = [
-    "claude-sonnet-4-5-20250514",   # Claude Sonnet 4.5 (stable)
-    "claude-3-5-sonnet-20241022",   # Claude 3.5 Sonnet (fallback)
-    "claude-haiku-4-5-20251001",    # Claude Haiku 4.5 (lightweight fallback)
+    "claude-sonnet-4-6",              # Claude Sonnet 4.6 (最新)
+    "claude-haiku-4-5-20251001",      # Claude Haiku 4.5 (fallback)
 ]
 MODEL = MODELS[0]
 
