@@ -923,17 +923,12 @@ function pcRecStart(){
   };
 
   pcRec.onerror=function(e){
-    if(e.error==='not-allowed'){ hasSR=false; toText(); return; }
-    // その他エラー: テキスト退避して再起動
-    if(pcMicOn&&!isCompleted){
-      pcSaved=(pcSaved+' '+pcFinal).trim();
-      pcFinal=''; pcInterim='';
-      setTimeout(function(){ if(pcMicOn&&!isCompleted) pcRecStart(); }, 150);
-    }
+    // not-allowed以外は無視（onendが後続するので再起動はそちらに任せる）
+    if(e.error==='not-allowed'){ hasSR=false; toText(); }
   };
 
   pcRec.onend=function(){
-    // セッション終了: テキスト退避して再起動（少し待ってから）
+    // セッション終了: テキスト退避して再起動
     if(pcMicOn&&!isCompleted&&state!=='thn'&&state!=='spk'){
       pcSaved=(pcSaved+' '+pcFinal).trim();
       pcFinal=''; pcInterim='';
