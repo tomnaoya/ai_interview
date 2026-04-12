@@ -297,28 +297,41 @@
     <div class="chat-col">
       <div class="msgs" id="msgs"><div class="mi" id="mi"></div></div>
       <div class="err-box" id="cerr"></div>
-      <!-- Voice bar -->
-      <div class="ibar" id="vbar">
+      <!-- Voice bar (mobile: press-to-talk) -->
+      <div class="ibar" id="vbar" style="display:none;">
         <button class="mbtn idle" id="mbtn"
           ontouchstart="if(PT)ptStart(event)"
           ontouchend="if(PT)ptEnd(event)"
-          ontouchcancel="if(PT)ptCancel(event)"
-          onclick="if(!PT||!isTouch)toggleMic()">
+          ontouchcancel="if(PT)ptCancel(event)">
           <i class="fas fa-microphone"></i>
         </button>
         <div class="bi">
           <div class="bs" id="bs">AIが話し終わるまでお待ちください</div>
-          <div class="bss" id="bss">{% if not job.avatar_gender is none %}音声認識は自動で開始されます{% endif %}</div>
+          <div class="bss" id="bss"></div>
           <div class="btr" id="btr"></div>
         </div>
         <div class="wf" id="wfd">{% for i in range(10) %}<div class="wb"></div>{% endfor %}</div>
         <span class="sw" onclick="toText()">テキスト入力</span>
       </div>
-      <!-- Transcript + send button (mobile press-to-talk) -->
+      <!-- Mobile: transcript preview + send -->
       <div class="trbox" id="trbox"></div>
       <button class="sendnow" id="sendNow" onclick="sendNowClick()">
         <i class="fas fa-paper-plane"></i> この内容で送信する
       </button>
+      <!-- PC: マイク + リアルタイム表示 + 送信ボタン -->
+      <div class="ibar" id="pcVbar" style="display:none;">
+        <button class="mbtn idle" id="pcMbtn" onclick="pcToggleMic()">
+          <i class="fas fa-microphone"></i>
+        </button>
+        <div class="bi" style="flex:1;">
+          <div class="bs" id="pcBs">AIが話し終わるまでお待ちください</div>
+          <div id="pcBtr" style="font-size:13px;color:rgba(255,255,255,.85);margin-top:4px;min-height:18px;word-break:break-all;"></div>
+        </div>
+        <button id="pcSendBtn" onclick="pcSend()" style="display:none;padding:8px 18px;border-radius:8px;background:var(--g);color:#fff;border:none;font-size:13px;font-weight:600;cursor:pointer;flex-shrink:0;">
+          <i class="fas fa-paper-plane"></i> 送信
+        </button>
+        <span class="sw" onclick="toText()" style="flex-shrink:0;">テキスト入力</span>
+      </div>
       <!-- Text input (fallback) -->
       <div class="tbar" id="tbar" style="display:none;">
         <textarea class="ti" id="ti" rows="1" placeholder="回答を入力..."
@@ -825,10 +838,12 @@ function doStart(){
   if(!hasSR){
     toText();
   } else if(PT){
+    // モバイル: プレストーク
+    var vb=$('vbar'); if(vb) vb.style.display='';
     var bss=$('bss'); if(bss) bss.textContent='マイクボタンを押している間録音・離すと送信';
   } else {
-    // デスクトップ: 音声認識準備
-    makeRec();
+    // PC: 送信ボタン方式
+    var pcv=$('pcVbar'); if(pcv) pcv.style.display='';
   }
   // 画面遷移
   var pc=$('pageConsent'), pi=$('pageInterview');
@@ -854,11 +869,71 @@ function doStart(){
     });
 }
 
+// ── PC音声入力（送信ボタン方式） ──────────────────────────────────
+var pcRec=null, pcFinal='', pcInterim='', pcMicOn=false;
+
+function pcStartMic(){
+  if(isCompleted||isSending) return;
+  pcFinal=''; pcInterim='';
+  var btr=$('pcBtr'); if(btr) btr.textContent='';
+  var sb=$('pcSendBtn'); if(sb) sb.style.display='none';
+  var mb=$('pcMbtn'); if(mb) mb.className='mbtn rec';
+  pcMicOn=true;
+  var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){ toText(); return; }
+  pcRec=new SR();
+  pcRec.lang=LANG_CODE;
+  pcRec.continuous=true;
+  pcRec.interimResults=true;
+  pcRec.onresult=function(e){
+    var f='', int_='', i;
+    for(i=e.resultIndex;i<e.results.length;i++){
+      if(e.results[i].isFinal) f+=e.results[i][0].transcript;
+      else int_+=e.results[i][0].transcript;
+    }
+    pcFinal+=f; pcInterim=int_;
+    var combined=(pcFinal+int_).trim();
+    var btr=$('pcBtr'); if(btr) btr.textContent=combined;
+    var sb=$('pcSendBtn'); if(sb) sb.style.display=combined?'inline-block':'none';
+  };
+  pcRec.onend=function(){
+    // 認識継続（ユーザーが送信ボタンを押すまで）
+    if(pcMicOn&&!isCompleted&&state!=='thn'&&state!=='spk'){
+      try{ pcRec.start(); }catch(e){}
+    }
+  };
+  pcRec.onerror=function(e){
+    if(e.error==='not-allowed'){ hasSR=false; toText(); }
+  };
+  try{ pcRec.start(); }catch(e){ toText(); }
+}
+
+function pcStopMic(){
+  pcMicOn=false;
+  try{ if(pcRec) pcRec.stop(); }catch(e){}
+  var mb=$('pcMbtn'); if(mb) mb.className='mbtn off';
+}
+
+function pcToggleMic(){
+  if(state==='spk'||state==='thn'||isCompleted) return;
+  if(pcMicOn){ pcStopMic(); var mb=$('pcMbtn'); if(mb) mb.className='mbtn idle'; }
+  else pcStartMic();
+}
+
+function pcSend(){
+  var txt=(pcFinal+pcInterim).trim();
+  if(!txt||isSending||isCompleted) return;
+  pcStopMic();
+  var btr=$('pcBtr'); if(btr) btr.textContent='';
+  var sb=$('pcSendBtn'); if(sb) sb.style.display='none';
+  sendMsg(txt);
+}
+
 // ── 送信 ─────────────────────────────────────────────────────────
 function sendMsg(text){
   if(isCompleted||isSending) return;
   if(text.length>500) text=text.slice(0,500);
-  isSending=true; ptSent=true; savedTxt=''; lastResultTime=0;
+  isSending=true; ptSent=true; savedTxt=''; lastResultTime=0; pcFinal=''; pcInterim='';
   final_t=''; interim_t=''; // 前回の発言をクリア
   isListening=false; clearSil(); clearWatch();
   if(fallTimer){ clearTimeout(fallTimer); fallTimer=null; }
@@ -898,7 +973,10 @@ function sendMsg(text){
       speakAll(d.reply, function(){ setTimeout(goCompleted,500); });
       setTimeout(goCompleted, 10000);
     } else {
-      speakAll(d.reply, afterSpeak);
+      // PC: マイクボタンをidle状態に戻す
+      if(!PT){ var mb=$('pcMbtn'); if(mb) mb.className='mbtn idle'; }
+      if(!PT){ var mb=$('pcMbtn'); if(mb) mb.className='mbtn off'; }
+  speakAll(d.reply, afterSpeak);
     }
   })
   .catch(function(e){
