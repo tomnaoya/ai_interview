@@ -528,7 +528,8 @@ function afterSpeak(){
     if(PT){
       setSt('idle','マイクボタンを押して回答','押している間録音・離すと送信');
     } else {
-      // 認識をすぐ開始しつつ、最初の200msはエコー除去のため無視
+      // stateをリセットしてから認識開始（spkガードを回避）
+      state='idle';
       startListening();
     }
   } else {
@@ -615,7 +616,7 @@ function makeRec(){
 
 // デスクトップ用: 連続認識の開始
 function startListening(){
-  if(isCompleted||isListening||state==='spk'||state==='thn') return;
+  if(isCompleted||isListening||state==='thn') return;
   clearWatch();
   isListening=true;
   recognition=null;
