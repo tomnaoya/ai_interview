@@ -528,11 +528,8 @@ function afterSpeak(){
     if(PT){
       setSt('idle','マイクボタンを押して回答','押している間録音・離すと送信');
     } else {
-      // 600ms待機: スピーカーのエコーがマイクに入るのを防ぐ
-      setSt('idle','マイクを準備中...','');
-      setTimeout(function(){
-        if(!isCompleted && state!=='thn' && state!=='spk') startListening();
-      }, 600);
+      // 認識をすぐ開始しつつ、最初の200msはエコー除去のため無視
+      startListening();
     }
   } else {
     setSt('idle','回答を入力してください','テキストを入力して送信ボタンを押してください');
@@ -549,7 +546,10 @@ function makeRec(){
   // Desktop: continuous=true（連続認識）
   recognition.continuous = PT ? false : true;
   recognition.interimResults=true;
+  var _recStart=Date.now();
   recognition.onresult=function(e){
+    // 開始直後200ms以内はエコー除去
+    if(!PT && Date.now()-_recStart < 200) return;
     var int_='', i;
     if(PT){
       // モバイル(iOS/Android): continuous=false → 毎回全体再構築（重複防止）
