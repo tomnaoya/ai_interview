@@ -599,8 +599,8 @@ function makeRec(){
       else setSt('idle','マイクボタンを押して回答','押している間録音・離すと送信');
     } else {
       // デスクトップ: onendでは送信しない。再起動して沈黙タイマーに任せる
-      // タイマーはクリアしない（再起動中も5秒カウント継続）
       if(state==='rec' && !isCompleted){
+        clearSil(); // 再起動後にフル時間確保するためリセット
         isListening=false;
         startListening();
       }
@@ -630,11 +630,7 @@ function startListening(){
   try{
     recognition.start();
     if(isIOS) startMic();
-    if(!PT){
-      // タイマーが動いていない場合のみ開始（再起動時は維持）
-      if(!silTimer) resetSil();
-      watchdogStart();
-    }
+    if(!PT){ resetSil(); watchdogStart(); }
   } catch(e){
     console.warn('recognition.start:',e);
     isListening=false;
@@ -658,7 +654,7 @@ function resetSil(){
       if(txt){ stopListening(); sendMsg(txt); }
       else resetSil();
     }
-  },5000); // 5秒: 発言の間・認識再起動のギャップを考慮
+  },3000); // 3秒の沈黙で送信
 }
 function clearSil(){ if(silTimer){ clearTimeout(silTimer); silTimer=null; } }
 
@@ -672,7 +668,7 @@ function watchdogStart(){
       stopListening();
       setTimeout(startListening, 300);
     }
-  },30000);
+  },15000);
 }
 function clearWatch(){ if(watchTimer){ clearTimeout(watchTimer); watchTimer=null; } }
 
