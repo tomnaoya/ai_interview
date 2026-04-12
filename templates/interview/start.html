@@ -368,6 +368,7 @@ var voices = [];
 var mouthTimer = null;
 var silTimer   = null;
 var lastResultTime = 0; // 最後にonresultが来た時刻
+var currentFinal = ''; // 現在セッションの確定テキスト
 var watchTimer = null;
 var fallTimer  = null;
 
@@ -546,9 +547,9 @@ function makeRec(){
   var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
   recognition=new SR();
   recognition.lang=LANG_CODE;
-  // モバイル(iOS/Android)プレストーク: continuous=false（重複防止）
-  // Desktop: continuous=true（連続認識）
-  recognition.continuous = PT ? false : true;
+  // 全デバイス: continuous=false
+  // PCはセッションごとにfinal_tに蓄積する方式
+  recognition.continuous = false;
   recognition.interimResults=true;
   recognition.onresult=function(e){
     var int_='', i;
@@ -569,7 +570,12 @@ function makeRec(){
     }
     interim_t=int_;
     // Android: savedTxtに前セッション分が退避されている場合は結合
-    var combined=((savedTxt?savedTxt+' ':'')+final_t+int_).trim();
+    var combined;
+    if(PT){
+      combined=((savedTxt?savedTxt+' ':'')+final_t+int_).trim();
+    } else {
+      combined=(final_t+currentFinal+int_).trim(); // 全セッション蓄積+現在
+    }
     var btr=$('btr'); if(btr) btr.textContent=combined;
     // モバイル: プレビューとボタンを表示
     if(PT && combined){
@@ -604,6 +610,8 @@ function makeRec(){
     } else {
       // デスクトップ: onendでは送信しない。再起動して沈黙タイマーに任せる
       if(state==='rec' && !isCompleted){
+        // このセッションの確定テキストをfinal_tに蓄積
+        final_t += currentFinal; currentFinal=''; interim_t='';
         isListening=false;
         startListening(); // ポーラーはそのまま継続
       }
@@ -625,10 +633,12 @@ function startListening(){
   if(!makeRec()){ isListening=false; return; }
   if(PT){
     // モバイル: 毎回クリア
-    final_t=''; interim_t='';
+    final_t=''; interim_t=''; currentFinal='';
     var btr=$('btr'); if(btr) btr.textContent='';
+  } else {
+    // デスクトップ: final_tは保持、currentFinalは新セッションでクリア
+    currentFinal=''; interim_t='';
   }
-  // デスクトップ: final_t・表示・タイマーは保持（再起動中も継続）
   setSt('rec','お話しください...','3秒間の沈黙で自動送信されます');
   try{
     recognition.start();
@@ -656,8 +666,9 @@ function startSilencePoller(){
     if(state!=='rec' || !lastResultTime){ return; }
     var elapsed=Date.now()-lastResultTime;
     if(elapsed>=3000){
-      var txt=(final_t||interim_t).trim();
+      var txt=PT ? (final_t||interim_t).trim() : (final_t+currentFinal+interim_t).trim();
       if(txt){
+        if(!PT){ final_t+=currentFinal; currentFinal=''; }
         clearSil();
         stopListening();
         sendMsg(txt);
@@ -871,7 +882,7 @@ function doStart(){
 function sendMsg(text){
   if(isCompleted||isSending) return;
   if(text.length>500) text=text.slice(0,500);
-  isSending=true; ptSent=true; savedTxt=''; lastResultTime=0;
+  isSending=true; ptSent=true; savedTxt=''; lastResultTime=0; currentFinal='';
   final_t=''; interim_t=''; // 前回の発言をクリア
   isListening=false; clearSil(); clearWatch();
   if(fallTimer){ clearTimeout(fallTimer); fallTimer=null; }
