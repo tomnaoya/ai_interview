@@ -579,7 +579,7 @@ function makeRec(){
     // デスクトップ: 沈黙タイマーリセット
     if(!PT){
       lastResultTime = Date.now();
-      resetSil();
+      startSilencePoller(); // ポーラーが止まっていれば再開
     }
   };
   recognition.onend=function(){
@@ -605,9 +605,7 @@ function makeRec(){
       // デスクトップ: onendでは送信しない。再起動して沈黙タイマーに任せる
       if(state==='rec' && !isCompleted){
         isListening=false;
-        startListening();
-        // タイマーが動いていなければ開始（lastResultTimeが設定済みの場合のみ）
-        if(!silTimer) resetSil();
+        startListening(); // ポーラーはそのまま継続
       }
     }
   };
@@ -635,12 +633,7 @@ function startListening(){
   try{
     recognition.start();
     if(isIOS) startMic();
-    if(!PT){
-      // タイマーはonresultからのみ開始する
-      // startListening（再起動時含む）ではタイマーを触らない
-      // → 最後にonresultが来てから3秒後に送信される
-      watchdogStart();
-    }
+    if(!PT){ watchdogStart(); }
   } catch(e){
     console.warn('recognition.start:',e);
     isListening=false;
@@ -655,31 +648,30 @@ function stopListening(){
   if(isIOS) stopMic();
 }
 
-// 沈黙検出（デスクトップ用）
-// onresultが来てlastResultTimeが設定された後にのみ有効
-function resetSil(){
-  if(!lastResultTime) return; // まだ一度も音声入力がない場合は無視
-  clearSil();
-  silTimer=setTimeout(function(){
-    silTimer=null;
-    if(state!=='rec' || !lastResultTime) return;
+// 沈黙検出: 1秒ポーリングで「最後のonresultから3秒」を監視
+// タイマーのリセット競合が起きない最もシンプルな実装
+function startSilencePoller(){
+  if(silTimer) return; // 既に動いている
+  silTimer=setInterval(function(){
+    if(state!=='rec' || !lastResultTime){ return; }
     var elapsed=Date.now()-lastResultTime;
     if(elapsed>=3000){
-      // 最後の文字出力から実際に3秒経過 → 送信
       var txt=(final_t||interim_t).trim();
-      if(txt){ stopListening(); sendMsg(txt); }
-    } else {
-      // まだ3秒経っていない → 残り時間だけ待つ
-      silTimer=setTimeout(function(){
-        silTimer=null;
-        if(state!=='rec') return;
-        var txt=(final_t||interim_t).trim();
-        if(txt){ stopListening(); sendMsg(txt); }
-      }, 3000-elapsed+100); // +100msバッファ
+      if(txt){
+        clearSil();
+        stopListening();
+        sendMsg(txt);
+      }
     }
-  },3000);
+  },500); // 500msごとにチェック
 }
-function clearSil(){ if(silTimer){ clearTimeout(silTimer); silTimer=null; } }
+function resetSil(){
+  // ポーリングが動いていなければ開始
+  startSilencePoller();
+}
+function clearSil(){
+  if(silTimer){ clearInterval(silTimer); silTimer=null; }
+}
 
 // ウォッチドッグ（認識が停止しても再起動）
 function watchdogStart(){
