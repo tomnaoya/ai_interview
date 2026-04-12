@@ -425,12 +425,21 @@ function setSt(s, text, sub){
   if(mb) mb.className='mbtn '+(s==='rec'?'rec':s==='spk'||s==='thn'?'off':'idle');
   if(sb) sb.disabled=(s==='spk'||s==='thn');
 
-  // PC: AI発話中・考え中はマイクを停止
-  if(!PT && (s==='spk'||s==='thn')){
-    pcMicOn=false;
-    try{ if(pcRec) pcRec.stop(); }catch(e){}
-    var pcmb=$('pcMbtn'); if(pcmb) pcmb.className='mbtn off';
-    var pcsb=$('pcSendBtn'); if(pcsb) pcsb.style.display='none';
+  // PC: pcBsテキストを状態に応じて更新
+  if(!PT){
+    var pcBsEl=$('pcBs');
+    if(pcBsEl){
+      if(s==='spk') pcBsEl.textContent='AI面接官が話しています...';
+      else if(s==='thn') pcBsEl.textContent='考え中...';
+      else if(s==='idle') pcBsEl.textContent='お話しください（話し終わったら「送信」を押してください）';
+    }
+    // AI発話中・考え中はマイクを停止
+    if(s==='spk'||s==='thn'){
+      pcMicOn=false;
+      try{ if(pcRec) pcRec.stop(); }catch(e){}
+      var pcmb=$('pcMbtn'); if(pcmb) pcmb.className='mbtn off';
+      var pcsb=$('pcSendBtn'); if(pcsb) pcsb.style.display='none';
+    }
   }
 
   // 口アニメーション
@@ -550,11 +559,11 @@ function afterSpeak(){
     if(PT){
       setSt('idle','マイクボタンを押して回答','押している間録音・離すと送信');
     } else {
-      // 250ms待機してから認識開始（TTS残響除去）
-      state='idle';
+      // PC: 送信ボタン方式 - 500ms後にマイクON
+      setSt('idle','お話しください','話し終わったら「送信」ボタンを押してください');
       setTimeout(function(){
-        if(!isCompleted && state!=='thn') startListening();
-      }, 250);
+        if(!isCompleted && state!=='thn' && state!=='spk') pcStartMic();
+      }, 500);
     }
   } else {
     setSt('idle','回答を入力してください','テキストを入力して送信ボタンを押してください');
