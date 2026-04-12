@@ -630,7 +630,12 @@ function startListening(){
   try{
     recognition.start();
     if(isIOS) startMic();
-    if(!PT){ resetSil(); watchdogStart(); }
+    if(!PT){
+      // final_tが空の時だけタイマー開始
+      // テキストがある場合はonresultで次の発話が来てからタイマー開始
+      if(!final_t.trim()) resetSil();
+      watchdogStart();
+    }
   } catch(e){
     console.warn('recognition.start:',e);
     isListening=false;
