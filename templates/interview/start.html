@@ -603,19 +603,10 @@ function makeRec(){
     } else {
       // デスクトップ: onendでは送信しない。再起動して沈黙タイマーに任せる
       if(state==='rec' && !isCompleted){
+        // タイマーはonresultからのみ動かす
+        // onend後も既存タイマーが残っていれば継続してカウント
         isListening=false;
         startListening();
-        // 最後のonresultから1.5秒以上経過している場合、残り時間でタイマー補完
-        if(lastResultTime>0 && !silTimer){
-          var gap=Date.now()-lastResultTime;
-          var remain=Math.max(500, 3000-gap);
-          silTimer=setTimeout(function(){
-            silTimer=null;
-            if(state!=='rec') return;
-            var txt=(final_t||interim_t).trim();
-            if(txt){ stopListening(); sendMsg(txt); }
-          }, remain);
-        }
       }
     }
   };
