@@ -368,8 +368,6 @@ var voices = [];
 var mouthTimer = null;
 var silTimer   = null;
 var lastResultTime = 0; // 最後にonresultが来た時刻
-var lastRestartTime = 0; // 最後に認識再起動した時刻
-var currentFinal = ''; // 現在セッションの確定テキスト
 var watchTimer = null;
 var fallTimer  = null;
 
@@ -548,9 +546,8 @@ function makeRec(){
   var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
   recognition=new SR();
   recognition.lang=LANG_CODE;
-  // 全デバイス: continuous=false
-  // PCはセッションごとにfinal_tに蓄積する方式
-  recognition.continuous = false;
+  // モバイル: continuous=false、デスクトップ: continuous=true
+  recognition.continuous = !PT;
   recognition.interimResults=true;
   recognition.onresult=function(e){
     var int_='', i;
@@ -571,12 +568,7 @@ function makeRec(){
     }
     interim_t=int_;
     // Android: savedTxtに前セッション分が退避されている場合は結合
-    var combined;
-    if(PT){
-      combined=((savedTxt?savedTxt+' ':'')+final_t+int_).trim();
-    } else {
-      combined=(final_t+currentFinal+int_).trim(); // 全セッション蓄積+現在
-    }
+    var combined=((savedTxt?savedTxt+' ':'')+final_t+int_).trim();
     var btr=$('btr'); if(btr) btr.textContent=combined;
     // モバイル: プレビューとボタンを表示
     if(PT && combined){
@@ -586,7 +578,7 @@ function makeRec(){
     // デスクトップ: 沈黙タイマーリセット
     if(!PT){
       lastResultTime = Date.now();
-      startSilencePoller(); // ポーラーが止まっていれば再開
+      resetSil(); // 最後のonresultから3秒で送信
     }
   };
   recognition.onend=function(){
@@ -611,10 +603,19 @@ function makeRec(){
     } else {
       // デスクトップ: onendでは送信しない。再起動して沈黙タイマーに任せる
       if(state==='rec' && !isCompleted){
-        // このセッションの確定テキストをfinal_tに蓄積
-        final_t += currentFinal; currentFinal=''; interim_t='';
         isListening=false;
-        startListening(); // ポーラーはそのまま継続
+        startListening();
+        // 最後のonresultから1.5秒以上経過している場合、残り時間でタイマー補完
+        if(lastResultTime>0 && !silTimer){
+          var gap=Date.now()-lastResultTime;
+          var remain=Math.max(500, 3000-gap);
+          silTimer=setTimeout(function(){
+            silTimer=null;
+            if(state!=='rec') return;
+            var txt=(final_t||interim_t).trim();
+            if(txt){ stopListening(); sendMsg(txt); }
+          }, remain);
+        }
       }
     }
   };
@@ -633,18 +634,14 @@ function startListening(){
   recognition=null;
   if(!makeRec()){ isListening=false; return; }
   if(PT){
-    // モバイル: 毎回クリア
-    final_t=''; interim_t=''; currentFinal='';
+    final_t=''; interim_t='';
     var btr=$('btr'); if(btr) btr.textContent='';
-  } else {
-    // デスクトップ: final_tは保持、currentFinalは新セッションでクリア
-    currentFinal=''; interim_t='';
   }
   setSt('rec','お話しください...','3秒間の沈黙で自動送信されます');
   try{
     recognition.start();
     if(isIOS) startMic();
-    if(!PT){ lastRestartTime=Date.now(); watchdogStart(); }
+    if(!PT){ watchdogStart(); }
   } catch(e){
     console.warn('recognition.start:',e);
     isListening=false;
@@ -659,33 +656,17 @@ function stopListening(){
   if(isIOS) stopMic();
 }
 
-// 沈黙検出: 1秒ポーリングで「最後のonresultから3秒」を監視
-// タイマーのリセット競合が起きない最もシンプルな実装
-function startSilencePoller(){
-  if(silTimer) return; // 既に動いている
-  silTimer=setInterval(function(){
-    if(state!=='rec' || !lastResultTime){ return; }
-    // 最後のonresult または 最後の再起動、いずれか新しい方から3秒待つ
-    var refTime=Math.max(lastResultTime, lastRestartTime);
-    var elapsed=Date.now()-refTime;
-    if(elapsed>=3000){
-      var txt=PT ? (final_t||interim_t).trim() : (final_t+currentFinal+interim_t).trim();
-      if(txt){
-        if(!PT){ final_t+=currentFinal; currentFinal=''; }
-        clearSil();
-        stopListening();
-        sendMsg(txt);
-      }
-    }
-  },500); // 500msごとにチェック
-}
+// 沈黙検出: 最後のonresultから3秒で送信
 function resetSil(){
-  // ポーリングが動いていなければ開始
-  startSilencePoller();
+  clearSil();
+  silTimer=setTimeout(function(){
+    silTimer=null;
+    if(state!=='rec') return;
+    var txt=(final_t||interim_t).trim();
+    if(txt){ stopListening(); sendMsg(txt); }
+  }, 3000);
 }
-function clearSil(){
-  if(silTimer){ clearInterval(silTimer); silTimer=null; }
-}
+function clearSil(){ if(silTimer){ clearTimeout(silTimer); silTimer=null; } }
 
 // ウォッチドッグ（認識が停止しても再起動）
 function watchdogStart(){
@@ -885,7 +866,7 @@ function doStart(){
 function sendMsg(text){
   if(isCompleted||isSending) return;
   if(text.length>500) text=text.slice(0,500);
-  isSending=true; ptSent=true; savedTxt=''; lastResultTime=0; lastRestartTime=0; currentFinal='';
+  isSending=true; ptSent=true; savedTxt=''; lastResultTime=0;
   final_t=''; interim_t=''; // 前回の発言をクリア
   isListening=false; clearSil(); clearWatch();
   if(fallTimer){ clearTimeout(fallTimer); fallTimer=null; }
