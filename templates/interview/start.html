@@ -599,10 +599,10 @@ function makeRec(){
       else setSt('idle','マイクボタンを押して回答','押している間録音・離すと送信');
     } else {
       // デスクトップ: onendでは送信しない。再起動して沈黙タイマーに任せる
+      // タイマーはクリアしない（再起動中も5秒カウント継続）
       if(state==='rec' && !isCompleted){
-        clearSil(); // 再起動中の誤検知を防ぐため一旦クリア
         isListening=false;
-        startListening(); // startListening内でresetSilが再設定される
+        startListening();
       }
     }
   };
@@ -620,15 +620,21 @@ function startListening(){
   isListening=true;
   recognition=null;
   if(!makeRec()){ isListening=false; return; }
-  // デスクトップ: final_tは保持（認識再起動時に消さない）
-  if(PT){ final_t=''; interim_t=''; }
-  interim_t='';
-  var btr=$('btr'); if(btr) btr.textContent='';
-  setSt('rec','お話しください...','3秒間の沈黙で自動送信されます');
+  if(PT){
+    // モバイル: 毎回クリア
+    final_t=''; interim_t='';
+    var btr=$('btr'); if(btr) btr.textContent='';
+  }
+  // デスクトップ: final_t・表示・タイマーは保持（再起動中も継続）
+  setSt('rec','お話しください...','5秒間の沈黙で自動送信されます');
   try{
     recognition.start();
     if(isIOS) startMic();
-    if(!PT){ resetSil(); watchdogStart(); }
+    if(!PT){
+      // タイマーが動いていない場合のみ開始（再起動時は維持）
+      if(!silTimer) resetSil();
+      watchdogStart();
+    }
   } catch(e){
     console.warn('recognition.start:',e);
     isListening=false;
