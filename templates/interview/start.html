@@ -631,9 +631,20 @@ function startListening(){
     recognition.start();
     if(isIOS) startMic();
     if(!PT){
-      // final_tが空の時だけタイマー開始
-      // テキストがある場合はonresultで次の発話が来てからタイマー開始
-      if(!final_t.trim()) resetSil();
+      // 常にタイマー開始
+      // final_tにテキストがある場合（再起動）は長めの猶予を与える
+      if(final_t.trim()){
+        clearSil();
+        silTimer=setTimeout(function(){
+          if(state==='rec'){
+            var txt=(final_t||interim_t).trim();
+            if(txt){ stopListening(); sendMsg(txt); }
+            else resetSil();
+          }
+        }, 6000); // 再起動後は6秒待つ（発言再開の余裕）
+      } else {
+        resetSil(); // 初回は通常3秒
+      }
       watchdogStart();
     }
   } catch(e){
