@@ -887,12 +887,12 @@ function doStart(){
 }
 
 // ── PC音声入力（送信ボタン方式） ──────────────────────────────────
-var pcRec=null, pcSaved='', pcFinal='', pcInterim='', pcMicOn=false;
+var pcRec=null, pcSaved='', pcFinal='', pcInterim='', pcMicOn=false, pcGen=0;
 
 function pcStartMic(){
   if(isCompleted||isSending) return;
   // 新規ターン開始: 全テキストをクリア
-  pcSaved=''; pcFinal=''; pcInterim='';
+  pcGen++; pcSaved=''; pcFinal=''; pcInterim='';
   var btr=$('pcBtr'); if(btr) btr.textContent='';
   var sb=$('pcSendBtn'); if(sb) sb.style.display='none';
   var mb=$('pcMbtn'); if(mb) mb.className='mbtn rec';
@@ -901,16 +901,19 @@ function pcStartMic(){
 }
 
 function pcRecStart(){
-  // Androidと同じ方式: continuous=false + onendで即再起動 + テキスト蓄積
   var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
   if(!SR){ toText(); return; }
+
+  // 世代カウンターで古いセッションのonendを無視する
+  var myGen=pcGen;
+
   pcRec=new SR();
   pcRec.lang=LANG_CODE;
-  pcRec.continuous=false;   // 自然な区切りで止まる
+  pcRec.continuous=false;
   pcRec.interimResults=true;
 
   pcRec.onresult=function(e){
-    // このセッション内をゼロから再構築（continuous=false）
+    if(myGen!==pcGen) return; // 古いセッションは無視
     var f='', int_='', i;
     for(i=0;i<e.results.length;i++){
       if(e.results[i].isFinal) f+=e.results[i][0].transcript;
@@ -923,15 +926,15 @@ function pcRecStart(){
   };
 
   pcRec.onerror=function(e){
-    // not-allowed以外は無視（onendが後続するので再起動はそちらに任せる）
     if(e.error==='not-allowed'){ hasSR=false; toText(); }
   };
 
   pcRec.onend=function(){
-    // セッション終了: テキスト退避して再起動
+    if(myGen!==pcGen) return; // 古いセッションは無視
     if(pcMicOn&&!isCompleted&&state!=='thn'&&state!=='spk'){
       pcSaved=(pcSaved+' '+pcFinal).trim();
       pcFinal=''; pcInterim='';
+      pcGen++; // 世代を進める
       setTimeout(function(){ if(pcMicOn&&!isCompleted) pcRecStart(); }, 100);
     }
   };
