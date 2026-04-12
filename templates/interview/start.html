@@ -924,10 +924,16 @@ function pcStartMic(isRestart){
 
   pcRec.onend=function(){
     if(pcMicOn&&!isCompleted&&state!=='thn'&&state!=='spk'){
-      // 現セッションの確定テキストをベースに蓄積してから再起動
+      // 現セッションの確定テキストをベースに蓄積
       pcBase+=pcFinal; pcFinal=''; pcInterim='';
-      pcMicOn=false;
-      pcStartMic(true); // ベーステキスト保持で再起動
+      // 同じオブジェクトで再起動（瞬時・マイク再接続なし）
+      try{
+        pcRec.start();
+      }catch(e){
+        // 失敗時のみ新SRオブジェクトで再起動
+        pcMicOn=false;
+        pcStartMic(true);
+      }
     }
   };
 
