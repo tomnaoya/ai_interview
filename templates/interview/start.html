@@ -368,6 +368,7 @@ var voices = [];
 var mouthTimer = null;
 var silTimer   = null;
 var lastResultTime = 0; // 最後にonresultが来た時刻
+var lastRestartTime = 0; // 最後に認識再起動した時刻
 var currentFinal = ''; // 現在セッションの確定テキスト
 var watchTimer = null;
 var fallTimer  = null;
@@ -643,7 +644,7 @@ function startListening(){
   try{
     recognition.start();
     if(isIOS) startMic();
-    if(!PT){ watchdogStart(); }
+    if(!PT){ lastRestartTime=Date.now(); watchdogStart(); }
   } catch(e){
     console.warn('recognition.start:',e);
     isListening=false;
@@ -664,7 +665,9 @@ function startSilencePoller(){
   if(silTimer) return; // 既に動いている
   silTimer=setInterval(function(){
     if(state!=='rec' || !lastResultTime){ return; }
-    var elapsed=Date.now()-lastResultTime;
+    // 最後のonresult または 最後の再起動、いずれか新しい方から3秒待つ
+    var refTime=Math.max(lastResultTime, lastRestartTime);
+    var elapsed=Date.now()-refTime;
     if(elapsed>=3000){
       var txt=PT ? (final_t||interim_t).trim() : (final_t+currentFinal+interim_t).trim();
       if(txt){
@@ -882,7 +885,7 @@ function doStart(){
 function sendMsg(text){
   if(isCompleted||isSending) return;
   if(text.length>500) text=text.slice(0,500);
-  isSending=true; ptSent=true; savedTxt=''; lastResultTime=0; currentFinal='';
+  isSending=true; ptSent=true; savedTxt=''; lastResultTime=0; lastRestartTime=0; currentFinal='';
   final_t=''; interim_t=''; // 前回の発言をクリア
   isListening=false; clearSil(); clearWatch();
   if(fallTimer){ clearTimeout(fallTimer); fallTimer=null; }
