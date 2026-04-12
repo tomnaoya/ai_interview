@@ -887,13 +887,13 @@ function doStart(){
 }
 
 // ── PC音声入力（送信ボタン方式） ──────────────────────────────────
-var pcRec=null, pcFinal='', pcInterim='', pcMicOn=false;
+var pcRec=null, pcBase='', pcFinal='', pcInterim='', pcMicOn=false;
 
-function pcStartMic(keepText){
+function pcStartMic(isRestart){
   if(isCompleted||isSending) return;
-  // keepText=trueのとき既存テキスト保持、falseは新規ターン開始
-  if(!keepText){
-    pcFinal=''; pcInterim='';
+  // 新規ターン開始時のみベーステキストをクリア
+  if(!isRestart){
+    pcBase=''; pcFinal=''; pcInterim='';
     var btr=$('pcBtr'); if(btr) btr.textContent='';
     var sb=$('pcSendBtn'); if(sb) sb.style.display='none';
   }
@@ -903,38 +903,36 @@ function pcStartMic(keepText){
   var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
   if(!SR){ toText(); return; }
 
-  // セッションごとの確定テキスト（pcFinalに蓄積）
-  var sessionFinal='';
   pcRec=new SR();
   pcRec.lang=LANG_CODE;
-  pcRec.continuous=false; // セッション単位で確実に区切る
+  pcRec.continuous=true;
   pcRec.interimResults=true;
 
   pcRec.onresult=function(e){
+    // このセッションの結果をゼロから再構築
     var f='', int_='', i;
-    // このセッション内をゼロから再構築（continuous=falseなので安全）
     for(i=0;i<e.results.length;i++){
       if(e.results[i].isFinal) f+=e.results[i][0].transcript;
       else int_+=e.results[i][0].transcript;
     }
-    sessionFinal=f; pcInterim=int_;
-    var combined=(pcFinal+f+int_).trim();
+    pcFinal=f; pcInterim=int_;
+    // 表示: 過去セッション蓄積 + 現セッション
+    var combined=(pcBase+f+int_).trim();
     var btr=$('pcBtr'); if(btr) btr.textContent=combined;
     var sb=$('pcSendBtn'); if(sb) sb.style.display=combined?'inline-block':'none';
   };
 
   pcRec.onend=function(){
-    // セッションの確定テキストをpcFinalに蓄積
-    pcFinal+=sessionFinal; sessionFinal=''; pcInterim='';
-    // マイクON中なら即座に次セッション開始
     if(pcMicOn&&!isCompleted&&state!=='thn'&&state!=='spk'){
-      pcStartMic(true); // テキスト保持で再起動
+      // 現セッションの確定テキストをベースに蓄積してから再起動
+      pcBase+=pcFinal; pcFinal=''; pcInterim='';
+      pcMicOn=false;
+      pcStartMic(true); // ベーステキスト保持で再起動
     }
   };
 
   pcRec.onerror=function(e){
     if(e.error==='not-allowed'){ hasSR=false; toText(); }
-    // その他エラーは無視して継続
   };
 
   try{ pcRec.start(); }catch(e){ toText(); }
@@ -958,7 +956,7 @@ function pcToggleMic(){
 }
 
 function pcSend(){
-  var txt=(pcFinal+pcInterim).trim();
+  var txt=(pcBase+pcFinal+pcInterim).trim();
   if(!txt||isSending||isCompleted) return;
   pcStopMic();
   var btr=$('pcBtr'); if(btr) btr.textContent='';
