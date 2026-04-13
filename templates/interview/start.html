@@ -368,7 +368,7 @@ function speakAll(text,onDone){
   if(!clean){ onDone&&onDone(); return; }
   setSt('spk','AI面接官が話しています...','話し終わると自動でマイクがONになります');
   var voice=getBestVoice(), called=false;
-  var maxMs=Math.max(8000,clean.length*100);
+  var maxMs=Math.max(15000,clean.length*120+10000);
   var fb=setTimeout(function(){ if(called)return; called=true; synth.cancel(); onDone&&onDone(); },maxMs);
   function finish(){ if(called)return; called=true; clearTimeout(fb); onDone&&onDone(); }
   if(isMobile){
@@ -385,6 +385,10 @@ function speakAll(text,onDone){
     }
     next();
   } else {
+    // PC: resumeインターバルで途中停止を防ぐ
+    var iv=setInterval(function(){ if(synth.paused) synth.resume(); },3000);
+    var origFinish=finish;
+    finish=function(){ clearInterval(iv); origFinish(); };
     var u=new SpeechSynthesisUtterance(clean);
     u.lang=LANG_CODE; u.rate=0.9; u.pitch=GENDER==='female'?1.1:0.85; u.volume=1;
     if(voice) u.voice=voice;
@@ -470,9 +474,9 @@ function startListening(){
   clearWatch();
   isListening=true; recognition=null;
   if(!makeRec()){ isListening=false; return; }
-  if(PT){ final_t=''; interim_t=''; }
+  if(PT){ final_t=''; interim_t=''; var btr=$('btr'); if(btr) btr.textContent=''; }
   interim_t='';
-  var btr=$('btr'); if(btr) btr.textContent='';
+  // PCは再起動時にbtr（表示）を保持する
   setSt('rec','お話しください...','4秒間の沈黙で自動送信されます');
   try{
     recognition.start();
@@ -513,7 +517,7 @@ function watchdogStart(){
       isListening=false; stopListening();
       setTimeout(startListening,300);
     }
-  },15000);
+  },10000);
 }
 function clearWatch(){ if(watchTimer){ clearTimeout(watchTimer); watchTimer=null; } }
 
