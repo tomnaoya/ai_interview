@@ -439,7 +439,7 @@ function makeRec(){
     }
     interim_t=int_;
     // モバイル: savedTxt（前セッション退避分）+ 現セッションを合わせて表示
-    var combined=PT ? (savedTxt?(savedTxt+' '):''+(final_t+int_)).trim() : (final_t+int_).trim();
+    var combined=PT ? ((savedTxt?savedTxt+' ':'')+final_t+int_).trim() : (final_t+int_).trim();
     if(!combined) combined=(final_t+int_).trim();
     var btr=$('btr'); if(btr) btr.textContent=combined;
     if(PT&&combined){
@@ -613,7 +613,7 @@ function ptEnd(e){
   try{ if(recognition) recognition.stop(); }catch(err){}
   fallTimer=setTimeout(function(){
     fallTimer=null; if(ptSent) return; ptSent=true;
-    var txt=(final_t+interim_t).trim()||savedTxt; interim_t=''; savedTxt='';
+    var txt=((savedTxt?savedTxt+' ':'')+final_t+interim_t).trim(); interim_t=''; savedTxt='';
     var tb=$('trbox'); if(tb){ tb.textContent=''; tb.className='trbox'; }
     var sn=$('sendNow'); if(sn) sn.className='sendnow';
     if(txt) sendMsg(txt);
@@ -633,7 +633,7 @@ function ptCancel(e){
 }
 function sendNowClick(){
   if(isCompleted) return;
-  var txt=savedTxt||(final_t+interim_t).trim();
+  var txt=((savedTxt?savedTxt+' ':'')+final_t+interim_t).trim();
   if(!txt){ alert('音声が認識されていません'); return; }
   isSending=false; isRec=false; ptSent=true; savedTxt='';
   if(fallTimer){ clearTimeout(fallTimer); fallTimer=null; }
