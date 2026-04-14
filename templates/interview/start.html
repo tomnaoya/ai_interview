@@ -272,7 +272,7 @@ var isTouch  = false;
 
 var state='idle', isCompleted=false, isSending=false;
 var isListening=false, isRec=false, ptSent=false, savedTxt='';
-var androidWatchdog=null, lastAndroidResult=0;
+var androidWatchdog=null, lastAndroidResult=0, mobileGen=0;
 var final_t='', interim_t='';
 var recognition=null, voices=[];
 var mouthTimer=null, silTimer=null, watchTimer=null, fallTimer=null;
@@ -453,10 +453,11 @@ function makeRec(){
       if(isRec){
         // まだボタンを押している → 長文で自動停止した
         // iOS/Android共通: テキストを退避して再起動（interim_tも含める）
+        var myG=mobileGen; // 現在の世代を記録
         savedTxt=((savedTxt?savedTxt+' ':'')+final_t+(interim_t?' '+interim_t:'')).trim();
         final_t=''; interim_t='';
         var btr=$('btr'); if(btr) btr.textContent=savedTxt;
-        androidRestartRec(); // iOSも同じ関数で再起動
+        if(myG===mobileGen) androidRestartRec(); // 世代が変わっていなければ再起動
         return;
       }
       if(fallTimer){ clearTimeout(fallTimer); fallTimer=null; }
@@ -540,45 +541,44 @@ function toggleMic(){
   } else { startListening(); }
 }
 
-// ── Android認識再起動 ───────────────────────────────────────────
+// ── iOS/Android認識再起動（世代カウンターで多重起動防止） ──────
 function androidRestartRec(){
   if(!isRec||isCompleted) return;
   if(androidWatchdog){ clearTimeout(androidWatchdog); androidWatchdog=null; }
-  recognition=null;
+  // テキストを退避（onendからの呼び出し時はすでに退避済み）
+  var myGen=++mobileGen; // 世代を進める
   setTimeout(function(){
-    if(!isRec||isCompleted) return;
-    if(!makeRec()){ return; }
+    if(!isRec||isCompleted||myGen!==mobileGen) return;
+    if(!makeRec()) return;
     try{
       recognition.start();
-      if(isIOS) startMic(); // iOSマイクメーター継続
-      // ウォッチドッグ: 3秒後にonresultが来ていなければ再起動
+      if(isIOS) startMic();
+      // ウォッチドッグ: 認識が止まったら再起動
       androidWatchdog=setTimeout(function(){
         androidWatchdog=null;
-        if(isRec&&!isCompleted&&!ptSent){
-          // 最後のonresultから2.5秒以上経過していれば認識が停止している
-          if(Date.now()-lastAndroidResult >= 2500){
-            // テキストは保存せず認識のみ再起動（保存すると重複の原因になる）
-            recognition=null;
-            if(makeRec()){ try{ recognition.start(); }catch(e){} }
-          }
-          // onresultが来ていれば認識は正常動作中→ウォッチドッグ延長
-          else {
-            androidWatchdog=setTimeout(function(){
-              androidWatchdog=null;
-              if(isRec&&!isCompleted&&!ptSent&&Date.now()-lastAndroidResult>=2500){
-                recognition=null;
-                if(makeRec()){ try{ recognition.start(); }catch(e){} }
-              }
-            }, 3000);
-          }
+        if(!isRec||isCompleted||ptSent||myGen!==mobileGen) return;
+        if(Date.now()-lastAndroidResult>=2500){
+          savedTxt=((savedTxt?savedTxt+' ':'')+final_t+(interim_t?' '+interim_t:'')).trim();
+          final_t=''; interim_t='';
+          var btr=$('btr'); if(btr) btr.textContent=savedTxt;
+          androidRestartRec();
+        } else {
+          androidWatchdog=setTimeout(function(){
+            androidWatchdog=null;
+            if(!isRec||isCompleted||ptSent||myGen!==mobileGen) return;
+            if(Date.now()-lastAndroidResult>=2500){
+              savedTxt=((savedTxt?savedTxt+' ':'')+final_t+(interim_t?' '+interim_t:'')).trim();
+              final_t=''; interim_t='';
+              var btr=$('btr'); if(btr) btr.textContent=savedTxt;
+              androidRestartRec();
+            }
+          },3000);
         }
-      }, 3000);
+      },3000);
     }catch(e){
-      console.warn('Android restart failed:',e);
-      // 失敗したら少し待って再試行
-      setTimeout(function(){ androidRestartRec(); }, 300);
+      if(myGen===mobileGen) setTimeout(function(){ androidRestartRec(); },300);
     }
-  }, 150);
+  },150);
 }
 
 // ── プレストーク（モバイル） ────────────────────────────────────
@@ -586,7 +586,7 @@ function ptStart(e){
   isTouch=true; e.preventDefault();
   if(state==='spk'||state==='thn'||isCompleted) return;
   recognition=null; if(!makeRec()) return;
-  isRec=true; ptSent=false; final_t=''; interim_t=''; savedTxt='';
+  isRec=true; ptSent=false; final_t=''; interim_t=''; savedTxt=''; mobileGen++; lastAndroidResult=0;
   var btr=$('btr'); if(btr) btr.textContent='';
   var tb=$('trbox'); if(tb){ tb.textContent=''; tb.className='trbox'; }
   var sn=$('sendNow'); if(sn) sn.className='sendnow';
