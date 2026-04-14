@@ -437,10 +437,11 @@ function makeRec(){
       final_t=f;
     }
     interim_t=int_;
-    var combined=(final_t+int_).trim();
+    // モバイル: savedTxt（前セッション退避分）+ 現セッションを合わせて表示
+    var combined=PT ? (savedTxt?(savedTxt+' '):''+(final_t+int_)).trim() : (final_t+int_).trim();
+    if(!combined) combined=(final_t+int_).trim();
     var btr=$('btr'); if(btr) btr.textContent=combined;
     if(PT&&combined){
-      savedTxt=combined;
       var tb=$('trbox'); if(tb){ tb.textContent=combined; tb.className='trbox on'; }
       var sn=$('sendNow'); if(sn) sn.className='sendnow on';
     }
@@ -451,13 +452,21 @@ function makeRec(){
       if(isRec){
         // まだボタンを押している → 長文で自動停止した
         if(isAndroid){
-          // Android: テキストを退避して即再起動
+          // Android: テキストを退避して再起動
           savedTxt=(savedTxt+' '+final_t).trim();
           final_t=''; interim_t='';
+          // 退避テキストを表示に維持
+          var btr=$('btr'); if(btr) btr.textContent=savedTxt;
           recognition=null;
-          if(makeRec()){
-            try{ recognition.start(); }catch(e){}
-          }
+          // 少し待ってから再起動（即時だと失敗することがある）
+          setTimeout(function(){
+            if(!isRec||isCompleted) return;
+            if(makeRec()){
+              try{ recognition.start(); }catch(e){
+                console.warn('Android restart failed:',e);
+              }
+            }
+          }, 200);
         }
         // iOS: システムレベルで継続するためreturnのみ
         return;
