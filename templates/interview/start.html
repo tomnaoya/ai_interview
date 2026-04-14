@@ -272,6 +272,7 @@ var isTouch  = false;
 
 var state='idle', isCompleted=false, isSending=false;
 var isListening=false, isRec=false, ptSent=false, savedTxt='';
+var androidWatchdog=null;
 var final_t='', interim_t='';
 var recognition=null, voices=[];
 var mouthTimer=null, silTimer=null, watchTimer=null, fallTimer=null;
@@ -451,24 +452,11 @@ function makeRec(){
     if(PT){
       if(isRec){
         // まだボタンを押している → 長文で自動停止した
-        if(isAndroid){
-          // Android: テキストを退避して再起動
-          savedTxt=(savedTxt+' '+final_t).trim();
-          final_t=''; interim_t='';
-          // 退避テキストを表示に維持
-          var btr=$('btr'); if(btr) btr.textContent=savedTxt;
-          recognition=null;
-          // 少し待ってから再起動（即時だと失敗することがある）
-          setTimeout(function(){
-            if(!isRec||isCompleted) return;
-            if(makeRec()){
-              try{ recognition.start(); }catch(e){
-                console.warn('Android restart failed:',e);
-              }
-            }
-          }, 200);
-        }
-        // iOS: システムレベルで継続するためreturnのみ
+        // iOS/Android共通: テキストを退避して再起動
+        savedTxt=(savedTxt+' '+final_t).trim();
+        final_t=''; interim_t='';
+        var btr=$('btr'); if(btr) btr.textContent=savedTxt;
+        androidRestartRec(); // iOSも同じ関数で再起動
         return;
       }
       if(fallTimer){ clearTimeout(fallTimer); fallTimer=null; }
@@ -552,6 +540,36 @@ function toggleMic(){
   } else { startListening(); }
 }
 
+// ── Android認識再起動 ───────────────────────────────────────────
+function androidRestartRec(){
+  if(!isRec||isCompleted) return;
+  if(androidWatchdog){ clearTimeout(androidWatchdog); androidWatchdog=null; }
+  recognition=null;
+  setTimeout(function(){
+    if(!isRec||isCompleted) return;
+    if(!makeRec()){ return; }
+    try{
+      recognition.start();
+      if(isIOS) startMic(); // iOSマイクメーター継続
+      // ウォッチドッグ: 3秒後に認識が動いていなければ再度リセット
+      androidWatchdog=setTimeout(function(){
+        androidWatchdog=null;
+        if(isRec&&!isCompleted&&!ptSent){
+          // まだ録音中なのに再起動が必要な場合
+          savedTxt=(savedTxt+' '+final_t).trim();
+          final_t=''; interim_t='';
+          var btr=$('btr'); if(btr) btr.textContent=savedTxt;
+          androidRestartRec();
+        }
+      }, 3000);
+    }catch(e){
+      console.warn('Android restart failed:',e);
+      // 失敗したら少し待って再試行
+      setTimeout(function(){ androidRestartRec(); }, 300);
+    }
+  }, 150);
+}
+
 // ── プレストーク（モバイル） ────────────────────────────────────
 function ptStart(e){
   isTouch=true; e.preventDefault();
@@ -568,6 +586,7 @@ function ptStart(e){
 function ptEnd(e){
   if(!isRec) return; e.preventDefault();
   isRec=false; ptSent=false;
+  if(androidWatchdog){ clearTimeout(androidWatchdog); androidWatchdog=null; }
   if(isIOS) stopMic();
   setSt('idle','確認中...','');
   var nowTxt=(final_t+interim_t).trim();
@@ -589,6 +608,7 @@ function ptEnd(e){
 }
 function ptCancel(e){
   if(!isRec) return; isRec=false; ptSent=true;
+  if(androidWatchdog){ clearTimeout(androidWatchdog); androidWatchdog=null; }
   if(fallTimer){ clearTimeout(fallTimer); fallTimer=null; }
   final_t=''; interim_t=''; savedTxt='';
   if(isIOS) stopMic();
