@@ -452,8 +452,8 @@ function makeRec(){
     if(PT){
       if(isRec){
         // まだボタンを押している → 長文で自動停止した
-        // iOS/Android共通: テキストを退避して再起動
-        savedTxt=(savedTxt+' '+final_t).trim();
+        // iOS/Android共通: テキストを退避して再起動（interim_tも含める）
+        savedTxt=((savedTxt?savedTxt+' ':'')+final_t+(interim_t?' '+interim_t:'')).trim();
         final_t=''; interim_t='';
         var btr=$('btr'); if(btr) btr.textContent=savedTxt;
         androidRestartRec(); // iOSも同じ関数で再起動
@@ -557,20 +557,17 @@ function androidRestartRec(){
         if(isRec&&!isCompleted&&!ptSent){
           // 最後のonresultから2.5秒以上経過していれば認識が停止している
           if(Date.now()-lastAndroidResult >= 2500){
-            savedTxt=(savedTxt+' '+final_t).trim();
-            final_t=''; interim_t='';
-            var btr=$('btr'); if(btr) btr.textContent=savedTxt;
-            androidRestartRec();
+            // テキストは保存せず認識のみ再起動（保存すると重複の原因になる）
+            recognition=null;
+            if(makeRec()){ try{ recognition.start(); }catch(e){} }
           }
           // onresultが来ていれば認識は正常動作中→ウォッチドッグ延長
           else {
             androidWatchdog=setTimeout(function(){
               androidWatchdog=null;
               if(isRec&&!isCompleted&&!ptSent&&Date.now()-lastAndroidResult>=2500){
-                savedTxt=(savedTxt+' '+final_t).trim();
-                final_t=''; interim_t='';
-                var btr=$('btr'); if(btr) btr.textContent=savedTxt;
-                androidRestartRec();
+                recognition=null;
+                if(makeRec()){ try{ recognition.start(); }catch(e){} }
               }
             }, 3000);
           }
