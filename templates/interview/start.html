@@ -272,7 +272,7 @@ var isTouch  = false;
 
 var state='idle', isCompleted=false, isSending=false;
 var isListening=false, isRec=false, ptSent=false, savedTxt='';
-var androidWatchdog=null, lastAndroidResult=0, mobileGen=0;
+var androidWatchdog=null, lastAndroidResult=0, mobileGen=0, ptNewSession=false;
 var final_t='', interim_t='';
 var recognition=null, voices=[];
 var mouthTimer=null, silTimer=null, watchTimer=null, fallTimer=null;
@@ -436,6 +436,12 @@ function makeRec(){
         if(e.results[i].isFinal) f+=e.results[i][0].transcript;
         else int_+=e.results[i][0].transcript;
       }
+      if(ptNewSession){
+        // 新セッション初回: 旧final_tをsavedTxtに移してからfinal_tを更新
+        ptNewSession=false;
+        if(final_t) savedTxt=((savedTxt?savedTxt+' ':'')+final_t).trim();
+        final_t='';
+      }
       final_t=f;
     }
     interim_t=int_;
@@ -454,9 +460,11 @@ function makeRec(){
       if(isRec){
         // まだボタンを押している → 長文で自動停止した（iOS/Android共通）
         if(myRec!==recognition) return; // 新しいSRが既に起動済みなら無視
-        savedTxt=((savedTxt?savedTxt+' ':'')+final_t+(interim_t?' '+interim_t:'')).trim();
-        final_t=''; interim_t='';
-        var btr=$('btr'); if(btr) btr.textContent=savedTxt;
+        // interim_tのみsavedTxtに退避、final_tはptEnd用に保持する
+        if(interim_t) savedTxt=((savedTxt?savedTxt+' ':'')+interim_t).trim();
+        interim_t='';
+        ptNewSession=true; // 次のonresultで旧final_tをsavedTxtに移す
+        var btr=$('btr'); if(btr) btr.textContent=((savedTxt?savedTxt+' ':'')+final_t).trim();
         androidRestartRec();
         return;
       }
@@ -564,7 +572,7 @@ function ptStart(e){
   isTouch=true; e.preventDefault();
   if(state==='spk'||state==='thn'||isCompleted) return;
   recognition=null; if(!makeRec()) return;
-  isRec=true; ptSent=false; final_t=''; interim_t=''; savedTxt=''; mobileGen++; lastAndroidResult=0;
+  isRec=true; ptSent=false; final_t=''; interim_t=''; savedTxt=''; mobileGen++; lastAndroidResult=0; ptNewSession=false;
   var btr=$('btr'); if(btr) btr.textContent='';
   var tb=$('trbox'); if(tb){ tb.textContent=''; tb.className='trbox'; }
   var sn=$('sendNow'); if(sn) sn.className='sendnow';
