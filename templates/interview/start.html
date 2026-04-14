@@ -448,11 +448,24 @@ function makeRec(){
   };
   recognition.onend=function(){
     if(PT){
-      if(isRec) return;
+      if(isRec){
+        // まだボタンを押している → 長文で自動停止した
+        if(isAndroid){
+          // Android: テキストを退避して即再起動
+          savedTxt=(savedTxt+' '+final_t).trim();
+          final_t=''; interim_t='';
+          recognition=null;
+          if(makeRec()){
+            try{ recognition.start(); }catch(e){}
+          }
+        }
+        // iOS: システムレベルで継続するためreturnのみ
+        return;
+      }
       if(fallTimer){ clearTimeout(fallTimer); fallTimer=null; }
       if(ptSent) return;
       ptSent=true;
-      var txt=(final_t+interim_t).trim(); interim_t='';
+      var txt=(savedTxt+' '+(final_t+interim_t)).trim(); interim_t=''; savedTxt='';
       if(txt) sendMsg(txt);
       else setSt('idle','マイクボタンを押して回答','押している間録音・離すと送信');
     } else {
