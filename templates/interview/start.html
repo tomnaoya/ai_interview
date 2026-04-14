@@ -272,7 +272,7 @@ var isTouch  = false;
 
 var state='idle', isCompleted=false, isSending=false;
 var isListening=false, isRec=false, ptSent=false, savedTxt='';
-var androidWatchdog=null;
+var androidWatchdog=null, lastAndroidResult=0;
 var final_t='', interim_t='';
 var recognition=null, voices=[];
 var mouthTimer=null, silTimer=null, watchTimer=null, fallTimer=null;
@@ -446,7 +446,7 @@ function makeRec(){
       var tb=$('trbox'); if(tb){ tb.textContent=combined; tb.className='trbox on'; }
       var sn=$('sendNow'); if(sn) sn.className='sendnow on';
     }
-    if(!PT) resetSil();
+    if(!PT) resetSil(); else lastAndroidResult=Date.now();
   };
   recognition.onend=function(){
     if(PT){
@@ -551,15 +551,29 @@ function androidRestartRec(){
     try{
       recognition.start();
       if(isIOS) startMic(); // iOSマイクメーター継続
-      // ウォッチドッグ: 3秒後に認識が動いていなければ再度リセット
+      // ウォッチドッグ: 3秒後にonresultが来ていなければ再起動
       androidWatchdog=setTimeout(function(){
         androidWatchdog=null;
         if(isRec&&!isCompleted&&!ptSent){
-          // まだ録音中なのに再起動が必要な場合
-          savedTxt=(savedTxt+' '+final_t).trim();
-          final_t=''; interim_t='';
-          var btr=$('btr'); if(btr) btr.textContent=savedTxt;
-          androidRestartRec();
+          // 最後のonresultから2.5秒以上経過していれば認識が停止している
+          if(Date.now()-lastAndroidResult >= 2500){
+            savedTxt=(savedTxt+' '+final_t).trim();
+            final_t=''; interim_t='';
+            var btr=$('btr'); if(btr) btr.textContent=savedTxt;
+            androidRestartRec();
+          }
+          // onresultが来ていれば認識は正常動作中→ウォッチドッグ延長
+          else {
+            androidWatchdog=setTimeout(function(){
+              androidWatchdog=null;
+              if(isRec&&!isCompleted&&!ptSent&&Date.now()-lastAndroidResult>=2500){
+                savedTxt=(savedTxt+' '+final_t).trim();
+                final_t=''; interim_t='';
+                var btr=$('btr'); if(btr) btr.textContent=savedTxt;
+                androidRestartRec();
+              }
+            }, 3000);
+          }
         }
       }, 3000);
     }catch(e){
