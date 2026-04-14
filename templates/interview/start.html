@@ -423,7 +423,7 @@ function makeRec(){
   recognition.lang=LANG_CODE;
   recognition.continuous=!PT;
   recognition.interimResults=true;
-  var recGen=mobileGen; // このSRオブジェクトの世代を固定
+  var myRec=recognition; // このSRオブジェクトへの参照を固定
   recognition.onresult=function(e){
     var f='',int_='',i;
     if(!PT){
@@ -453,11 +453,11 @@ function makeRec(){
     if(PT){
       if(isRec){
         // まだボタンを押している → 長文で自動停止した（iOS/Android共通）
-        if(recGen!==mobileGen) return; // 古い世代のSRは無視
+        if(myRec!==recognition) return; // 新しいSRが既に起動済みなら無視
         savedTxt=((savedTxt?savedTxt+' ':'')+final_t+(interim_t?' '+interim_t:'')).trim();
         final_t=''; interim_t='';
         var btr=$('btr'); if(btr) btr.textContent=savedTxt;
-        androidRestartRec(); // mobileGenをインクリメントして新SR起動
+        androidRestartRec();
         return;
       }
       if(fallTimer){ clearTimeout(fallTimer); fallTimer=null; }
@@ -545,7 +545,8 @@ function toggleMic(){
 function androidRestartRec(){
   if(!isRec||isCompleted) return;
   if(androidWatchdog){ clearTimeout(androidWatchdog); androidWatchdog=null; }
-  mobileGen++;
+  // recognition=nullにして新SR起動前に古いonendが干渉しないようにする
+  recognition=null;
   setTimeout(function(){
     if(!isRec||isCompleted) return;
     if(!makeRec()) return;
