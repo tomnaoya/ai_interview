@@ -432,21 +432,19 @@ function makeRec(){
         else int_+=e.results[i][0].transcript;
       }
     } else {
+      // モバイル: finalをsavedTxtに直接蓄積（セッション跨ぎで消えない）
       for(i=0;i<e.results.length;i++){
-        if(e.results[i].isFinal) f+=e.results[i][0].transcript;
-        else int_+=e.results[i][0].transcript;
+        if(e.results[i].isFinal){
+          savedTxt=((savedTxt?savedTxt+' ':'')+e.results[i][0].transcript).trim();
+        } else {
+          int_+=e.results[i][0].transcript;
+        }
       }
-      if(ptNewSession){
-        // 新セッション初回: 旧final_tをsavedTxtに移してからfinal_tを更新
-        ptNewSession=false;
-        if(final_t) savedTxt=((savedTxt?savedTxt+' ':'')+final_t).trim();
-        final_t='';
-      }
-      final_t=f;
+      final_t=''; // モバイルではfinal_tは使わない
     }
     interim_t=int_;
     // モバイル: savedTxt（前セッション退避分）+ 現セッションを合わせて表示
-    var combined=PT ? ((savedTxt?savedTxt+' ':'')+final_t+int_).trim() : (final_t+int_).trim();
+    var combined=PT ? ((savedTxt?savedTxt+' ':'')+int_).trim() : (final_t+int_).trim();
     if(!combined) combined=(final_t+int_).trim();
     var btr=$('btr'); if(btr) btr.textContent=combined;
     if(PT&&combined){
@@ -460,18 +458,17 @@ function makeRec(){
       if(isRec){
         // まだボタンを押している → 長文で自動停止した（iOS/Android共通）
         if(myRec!==recognition) return; // 新しいSRが既に起動済みなら無視
-        // interim_tのみsavedTxtに退避、final_tはptEnd用に保持する
+        // interim_tもsavedTxtに保存（消えないように）
         if(interim_t) savedTxt=((savedTxt?savedTxt+' ':'')+interim_t).trim();
         interim_t='';
-        ptNewSession=true; // 次のonresultで旧final_tをsavedTxtに移す
-        var btr=$('btr'); if(btr) btr.textContent=((savedTxt?savedTxt+' ':'')+final_t).trim();
+        var btr=$('btr'); if(btr) btr.textContent=savedTxt;
         androidRestartRec();
         return;
       }
       if(fallTimer){ clearTimeout(fallTimer); fallTimer=null; }
       if(ptSent) return;
       ptSent=true;
-      var txt=(savedTxt+' '+(final_t+interim_t)).trim(); interim_t=''; savedTxt='';
+      var txt=((savedTxt?savedTxt+' ':'')+interim_t).trim(); interim_t=''; savedTxt='';
       if(txt) sendMsg(txt);
       else setSt('idle','マイクボタンを押して回答','押している間録音・離すと送信');
     } else {
@@ -596,7 +593,7 @@ function ptEnd(e){
   try{ if(recognition) recognition.stop(); }catch(err){}
   fallTimer=setTimeout(function(){
     fallTimer=null; if(ptSent) return; ptSent=true;
-    var txt=((savedTxt?savedTxt+' ':'')+final_t+interim_t).trim(); interim_t=''; savedTxt='';
+    var txt=((savedTxt?savedTxt+' ':'')+interim_t).trim(); interim_t=''; savedTxt='';
     var tb=$('trbox'); if(tb){ tb.textContent=''; tb.className='trbox'; }
     var sn=$('sendNow'); if(sn) sn.className='sendnow';
     if(txt) sendMsg(txt);
@@ -616,7 +613,7 @@ function ptCancel(e){
 }
 function sendNowClick(){
   if(isCompleted) return;
-  var txt=((savedTxt?savedTxt+' ':'')+final_t+interim_t).trim();
+  var txt=((savedTxt?savedTxt+' ':'')+interim_t).trim();
   if(!txt){ alert('音声が認識されていません'); return; }
   isSending=false; isRec=false; ptSent=true; savedTxt='';
   if(fallTimer){ clearTimeout(fallTimer); fallTimer=null; }
