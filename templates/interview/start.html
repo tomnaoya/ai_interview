@@ -423,6 +423,7 @@ function makeRec(){
   recognition.lang=LANG_CODE;
   recognition.continuous=!PT;
   recognition.interimResults=true;
+  var recGen=mobileGen; // このSRオブジェクトの世代を固定
   recognition.onresult=function(e){
     var f='',int_='',i;
     if(!PT){
@@ -453,11 +454,11 @@ function makeRec(){
       if(isRec){
         // まだボタンを押している → 長文で自動停止した
         // iOS/Android共通: テキストを退避して再起動（interim_tも含める）
-        var myG=mobileGen; // 現在の世代を記録
+        if(recGen!==mobileGen) return; // 古い世代のSRは無視
         savedTxt=((savedTxt?savedTxt+' ':'')+final_t+(interim_t?' '+interim_t:'')).trim();
         final_t=''; interim_t='';
         var btr=$('btr'); if(btr) btr.textContent=savedTxt;
-        if(myG===mobileGen) androidRestartRec(); // 世代が変わっていなければ再起動
+        androidRestartRec();
         return;
       }
       if(fallTimer){ clearTimeout(fallTimer); fallTimer=null; }
