@@ -452,13 +452,12 @@ function makeRec(){
   recognition.onend=function(){
     if(PT){
       if(isRec){
-        // まだボタンを押している → 長文で自動停止した
-        // iOS/Android共通: テキストを退避して再起動（interim_tも含める）
+        // まだボタンを押している → 長文で自動停止した（iOS/Android共通）
         if(recGen!==mobileGen) return; // 古い世代のSRは無視
         savedTxt=((savedTxt?savedTxt+' ':'')+final_t+(interim_t?' '+interim_t:'')).trim();
         final_t=''; interim_t='';
         var btr=$('btr'); if(btr) btr.textContent=savedTxt;
-        androidRestartRec();
+        androidRestartRec(); // mobileGenをインクリメントして新SR起動
         return;
       }
       if(fallTimer){ clearTimeout(fallTimer); fallTimer=null; }
@@ -542,44 +541,21 @@ function toggleMic(){
   } else { startListening(); }
 }
 
-// ── iOS/Android認識再起動（世代カウンターで多重起動防止） ──────
+// ── iOS/Android認識再起動 ───────────────────────────────────────
 function androidRestartRec(){
   if(!isRec||isCompleted) return;
   if(androidWatchdog){ clearTimeout(androidWatchdog); androidWatchdog=null; }
-  // テキストを退避（onendからの呼び出し時はすでに退避済み）
-  var myGen=++mobileGen; // 世代を進める
+  mobileGen++;
   setTimeout(function(){
-    if(!isRec||isCompleted||myGen!==mobileGen) return;
+    if(!isRec||isCompleted) return;
     if(!makeRec()) return;
     try{
       recognition.start();
       if(isIOS) startMic();
-      // ウォッチドッグ: 認識が止まったら再起動
-      androidWatchdog=setTimeout(function(){
-        androidWatchdog=null;
-        if(!isRec||isCompleted||ptSent||myGen!==mobileGen) return;
-        if(Date.now()-lastAndroidResult>=2500){
-          savedTxt=((savedTxt?savedTxt+' ':'')+final_t+(interim_t?' '+interim_t:'')).trim();
-          final_t=''; interim_t='';
-          var btr=$('btr'); if(btr) btr.textContent=savedTxt;
-          androidRestartRec();
-        } else {
-          androidWatchdog=setTimeout(function(){
-            androidWatchdog=null;
-            if(!isRec||isCompleted||ptSent||myGen!==mobileGen) return;
-            if(Date.now()-lastAndroidResult>=2500){
-              savedTxt=((savedTxt?savedTxt+' ':'')+final_t+(interim_t?' '+interim_t:'')).trim();
-              final_t=''; interim_t='';
-              var btr=$('btr'); if(btr) btr.textContent=savedTxt;
-              androidRestartRec();
-            }
-          },3000);
-        }
-      },3000);
     }catch(e){
-      if(myGen===mobileGen) setTimeout(function(){ androidRestartRec(); },300);
+      setTimeout(function(){ if(isRec&&!isCompleted) androidRestartRec(); },300);
     }
-  },150);
+  },100);
 }
 
 // ── プレストーク（モバイル） ────────────────────────────────────
